@@ -1,3 +1,5 @@
+![SRA Fetch AI Agent Icon](./icon.png)
+
 # SRA Fetch AI Agent 🧬🧠🔍
 
 **Automated NGS Data Fetching and AI-Powered Metadata Processing**
