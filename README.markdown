@@ -26,7 +26,7 @@ The script employs three specialized AI agents for metadata processing:
    - **Role**: Analyzes scientific summaries, SRA XML, and GEO data to extract and structure metadata fields as a meticulous biomedical data curator.
    - **Output**: Detailed JSON object with fields like species, sample type, sequencing technique, disease description, treatment protocols, and ChIP-Seq details, mapped to the final CSV output.
 
-![Workflow Diagram](./workflow.png)
+![Workflow Diagram](workflow.png)
 
 ## Features
 
