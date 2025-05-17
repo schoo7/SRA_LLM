@@ -26,6 +26,8 @@ The script employs three specialized AI agents for metadata processing:
    - **Role**: Analyzes scientific summaries, SRA XML, and GEO data to extract and structure metadata fields as a meticulous biomedical data curator.
    - **Output**: Detailed JSON object with fields like species, sample type, sequencing technique, disease description, treatment protocols, and ChIP-Seq details, mapped to the final CSV output.
 
+![SRA_fetch.py Workflow Diagram](./workflow.png)
+
 ## Features
 
 - **Keyword-Driven Data Discovery**: Searches SRA using keywords from a user-provided CSV.
@@ -163,7 +165,7 @@ python SRA_fetch.py <input_csv_path> <output_csv_path> [options]
 
 ### Positional Arguments
 
-- `input_csv_path`: Path to the input CSV file containing keywords (required).
+- `input_csv_path`: Path to the input CSV file containing keywords (required DEGREE).
 - `output_csv_path`: Path to the output CSV file for results (required).
 
 ### Optional Arguments
@@ -302,14 +304,8 @@ Distributed under the MIT License. See `LICENSE.txt` for details.
 
 ## Contact
 
-- **Author**: YOUR_NAME
-- **GitHub**: [Your GitHub Profile]
-- **Email**: [Your Email]
+- **Author**: Siyuan Cheng
+- **Lab**: Mu Lab, Yale
+- **GitHub**: [https://github.com/schoo7](https://github.com/schoo7)
+- **Email**: siyuan.cheng@yale.edu
 - **Project Link**: [https://github.com/schoo7/SRA_LLM/](https://github.com/schoo7/SRA_LLM/)
-
-## Acknowledgements
-
-- NCBI Entrez Direct
-- GEOparse
-- Ollama
-- LangChain
