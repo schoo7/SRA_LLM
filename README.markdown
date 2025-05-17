@@ -26,7 +26,7 @@ The script employs three specialized AI agents for metadata processing:
    - **Role**: Analyzes scientific summaries, SRA XML, and GEO data to extract and structure metadata fields as a meticulous biomedical data curator.
    - **Output**: Detailed JSON object with fields like species, sample type, sequencing technique, disease description, treatment protocols, and ChIP-Seq details, mapped to the final CSV output.
 
-![SRA_fetch.py Workflow Diagram](./workflow.png)
+![SRA Fetch Workflow Diagram](./workflow.png)
 
 ## Features
 
@@ -165,7 +165,7 @@ python SRA_fetch.py <input_csv_path> <output_csv_path> [options]
 
 ### Positional Arguments
 
-- `input_csv_path`: Path to the input CSV file containing keywords (required DEGREE).
+- `input_csv_path`: Path to the input CSV file containing keywords (required).
 - `output_csv_path`: Path to the output CSV file for results (required).
 
 ### Optional Arguments
