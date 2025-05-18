@@ -1,4 +1,4 @@
-![SRA Fetch AI Agent Icon](icon.png)
+![Icon](icon.png)
 
 # SRA Fetch AI Agent 🧬🧠🔍
 
