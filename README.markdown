@@ -1,5 +1,5 @@
-![Icon]( icon.png)
-![Workflow Diagram](icon.png)
+![Icon](icon.png)
+
 # SRA Fetch AI Agent 🧬🧠🔍
 
 **Automated NGS Data Fetching and AI-Powered Metadata Processing**
