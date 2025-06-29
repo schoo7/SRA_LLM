@@ -5,8 +5,11 @@
 
 echo "🚀 Starting Enhanced SRA Web App..."
 
-# Configure PATH for Ollama (common installation locations)
-export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+# Get script directory for local Ollama detection
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+# Configure PATH for Ollama (common installation locations + local)
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$SCRIPT_DIR/ollama_local:$PATH"
 
 # Add common Ollama locations to PATH if they exist
 if [ -d "/usr/local/bin" ]; then
@@ -17,6 +20,9 @@ if [ -d "/opt/homebrew/bin" ]; then
 fi
 if [ -d "$HOME/.ollama/bin" ]; then
     export PATH="$HOME/.ollama/bin:$PATH"
+fi
+if [ -d "$SCRIPT_DIR/ollama_local" ]; then
+    export PATH="$SCRIPT_DIR/ollama_local:$PATH"
 fi
 
 # Check if virtual environment exists
@@ -62,13 +68,15 @@ if command -v ollama >/dev/null 2>&1; then
     fi
 else
     echo "❌ Ollama not found in PATH"
-    echo "   Common installation locations checked:"
-    echo "   - /usr/local/bin/ollama"
-    echo "   - /opt/homebrew/bin/ollama" 
-    echo "   - $HOME/.ollama/bin/ollama"
+    echo "   Installation locations checked:"
+    echo "   - /usr/local/bin/ollama (standard)"
+    echo "   - /opt/homebrew/bin/ollama (Homebrew)" 
+    echo "   - $HOME/.ollama/bin/ollama (user)"
+    echo "   - $SCRIPT_DIR/ollama_local/ollama (local)"
     echo ""
     echo "   AI features will not work without Ollama"
     echo "   You can install Ollama from: https://ollama.ai"
+    echo "   Or re-run the installer which will set up Ollama automatically"
 fi
 
 # Check if streamlit is installed

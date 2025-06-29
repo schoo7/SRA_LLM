@@ -308,28 +308,78 @@ class SRAAnalyzerInstaller:
         except (subprocess.CalledProcessError, FileNotFoundError):
             pass
         
-        # Fallback: Download installer
-        print("Downloading Ollama for macOS...")
+        # Fallback: Use official installer script (more reliable)
+        print("Installing Ollama using official installer...")
+        try:
+            # Download and run the official Ollama installer
+            subprocess.run([
+                "bash", "-c", 
+                "curl -fsSL https://ollama.com/install.sh | sh"
+            ], check=True)
+            
+            # Verify installation
+            time.sleep(2)
+            try:
+                result = subprocess.run(["ollama", "--version"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    self.print_success("Ollama installed successfully!")
+                    return True
+                else:
+                    # Fallback to local installation if system install failed
+                    return self.install_ollama_local()
+            except FileNotFoundError:
+                # Fallback to local installation if not in PATH
+                return self.install_ollama_local()
+                
+        except Exception as e:
+            self.print_warning(f"Official installer failed: {e}")
+            # Fallback to local installation
+            return self.install_ollama_local()
+
+    def install_ollama_local(self):
+        """Install Ollama locally in project directory as fallback."""
+        print("Installing Ollama locally in project directory...")
         ollama_url = "https://ollama.com/download/Ollama-darwin.zip"
         
         installer_path = Path.cwd() / "Ollama-darwin.zip"
+        local_ollama_dir = Path.cwd() / "ollama_local"
         
         try:
             urllib.request.urlretrieve(ollama_url, installer_path)
             
-            # Extract and install
-            with zipfile.ZipFile(installer_path, 'r') as zip_ref:
-                zip_ref.extractall(Path.cwd())
+            # Create local ollama directory
+            local_ollama_dir.mkdir(exist_ok=True)
             
-            print("📋 Please drag Ollama.app to your Applications folder")
-            print("   Then run 'ollama' from Terminal to complete setup")
+            # Extract to local directory
+            with zipfile.ZipFile(installer_path, 'r') as zip_ref:
+                zip_ref.extractall(local_ollama_dir)
+            
+            # Create symbolic link to binary for easy access
+            ollama_app_path = local_ollama_dir / "Ollama.app"
+            ollama_binary = ollama_app_path / "Contents" / "Resources" / "ollama"
+            local_binary_link = local_ollama_dir / "ollama"
+            
+            if ollama_binary.exists():
+                # Create symlink to the binary
+                if local_binary_link.exists():
+                    local_binary_link.unlink()
+                local_binary_link.symlink_to(ollama_binary)
+                
+                # Make it executable
+                subprocess.run(["chmod", "+x", str(local_binary_link)], check=True)
+                
+                self.print_success("Ollama installed locally!")
+                print(f"📍 Ollama location: {local_ollama_dir}")
+                print("🔧 The launcher scripts will automatically detect this installation")
+            else:
+                self.print_error("Failed to find Ollama binary in downloaded app")
+                return False
             
             installer_path.unlink()
-            self.print_success("Ollama downloaded!")
             return True
             
         except Exception as e:
-            self.print_error(f"Failed to install Ollama: {e}")
+            self.print_error(f"Failed to install Ollama locally: {e}")
             return False
 
     def install_ncbi_tools(self):

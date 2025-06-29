@@ -16,7 +16,7 @@ echo "📍 Working directory: $SCRIPT_DIR"
 
 # Enhanced PATH configuration for Ollama detection
 echo "🔧 Configuring PATH for Ollama..."
-export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$PATH"
+export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$PATH"
 
 # Function to find Ollama binary
 find_ollama_binary() {
@@ -25,11 +25,16 @@ find_ollama_binary() {
         "/opt/homebrew/bin/ollama"
         "~/.ollama/bin/ollama"
         "/Applications/Ollama.app/Contents/Resources/ollama"
+        "$SCRIPT_DIR/ollama_local/ollama"
+        "$SCRIPT_DIR/Ollama.app/Contents/Resources/ollama"
+        "$SCRIPT_DIR/ollama_local/Ollama.app/Contents/Resources/ollama"
     )
     
     for path in "${ollama_paths[@]}"; do
-        if [ -f "$path" ]; then
-            echo "$path"
+        # Expand tilde manually for home directory
+        expanded_path="${path/#\~/$HOME}"
+        if [ -f "$expanded_path" ]; then
+            echo "$expanded_path"
             return 0
         fi
     done
@@ -82,7 +87,7 @@ echo "🐍 Activating virtual environment..."
 source "sra_env/bin/activate"
 
 # Re-export PATH to ensure it's available in virtual environment
-export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$PATH"
+export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$PATH"
 
 # Check if web app script exists
 if [ ! -f "SRA_web_app_enhanced.py" ]; then
