@@ -1,0 +1,3 @@
+# This file preserves the visualizations directory structure
+# Generated visualization files (PNG, PDF) will be created here during analysis
+# The directory is kept empty in the repository as users generate their own visualizations 

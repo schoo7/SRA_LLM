@@ -1,0 +1,36 @@
+# SRA Metadata Analyzer - Python Requirements
+# ==========================================
+# This file lists all Python packages required for the SRA Analyzer
+# Install with: pip install -r requirements.txt
+
+# Core dependencies for data processing
+tqdm>=4.64.0              # Progress bars
+requests>=2.31.0          # HTTP requests for GEO data
+pandas>=2.0.0             # Data manipulation and analysis
+numpy>=1.24.0             # Numerical computing
+
+# Visualization dependencies
+matplotlib>=3.7.0         # Plotting and visualization
+wordcloud>=1.9.0          # Word cloud generation
+plotly>=5.17.0
+
+# Web interface dependencies
+streamlit>=1.28.0         # Web app framework
+
+# LLM and AI dependencies
+langchain-ollama>=0.1.0   # Ollama integration for LangChain
+
+# Image processing for web interface
+Pillow>=10.0.0
+
+# System utilities
+psutil>=5.9.0
+watchdog>=6.0.0             # File monitoring for better Streamlit performance
+
+# Optional: Development and testing (uncomment if needed)
+# pytest>=7.0.0           # Testing framework
+# black>=22.0.0           # Code formatting
+# flake8>=5.0.0           # Code linting
+
+# Platform-specific dependencies (handled automatically)
+# These will be installed based on your Python version and OS 
