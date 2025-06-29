@@ -1009,6 +1009,30 @@ def start_streaming_download(keyword: str, file_path: str) -> threading.Thread:
     def worker():
         print(f"INFO: Starting true incremental download for '{keyword}' to {file_path}", file=sys.stderr)
         
+        # Create empty file immediately to prevent timeout
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write("")  # Create empty file immediately
+            print(f"INFO: Created initial file: {file_path}", file=sys.stderr)
+        except Exception as e:
+            print(f"ERROR: Failed to create initial file {file_path}: {e}", file=sys.stderr)
+            return
+        
+        # Check if NCBI tools are available
+        try:
+            subprocess.run(["esearch", "-help"], capture_output=True, check=True, text=True, timeout=10)
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            print(f"ERROR: NCBI esearch tool not found or not working: {e}", file=sys.stderr)
+            print(f"ERROR: Please ensure NCBI E-utilities are installed and in PATH", file=sys.stderr)
+            # Create minimal CSV header so processing can continue
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write("Run,ReleaseDate,LoadDate,spots,bases,spots_with_mates,avgLength,size_MB,AssemblyName,download_path,Experiment,LibraryName,LibraryStrategy,LibrarySelection,LibrarySource,LibraryLayout,InsertSize,InsertDev,Platform,Model,SRAStudy,BioProject,Study_Pubmed_id,ProjectID,Sample,BioSample,SampleType,TaxID,ScientificName,SampleName,g1k_pop_code,source,g1k_analysis_group,Subject_ID,Sex,Disease,Tumor,Affection_Status,Analyte_Type,Histological_Type,Body_Site,CenterName,Submission,dbgap_study_accession,Consent,RunHash,ReadHash\n")
+                print(f"INFO: Created minimal CSV header for offline processing", file=sys.stderr)
+            except Exception as e2:
+                print(f"ERROR: Failed to create CSV header: {e2}", file=sys.stderr)
+            return
+        
         # Enhanced search query builder to support multi-word keywords and broader coverage
         words = [w.strip() for w in keyword.split() if w.strip()]
         fields = ["All Fields", "Title", "Abstract", "Study Title", "Study Abstract", "Sample Name", "Organism", "Strain", "Cell Line", "Cell Type", "Tissue", "Source Name"]
@@ -1037,52 +1061,83 @@ def start_streaming_download(keyword: str, file_path: str) -> threading.Thread:
             
             # Start download process without waiting for completion
             with open(temp_file, 'w', encoding='utf-8') as f_temp:
-                esearch_proc = subprocess.Popen(esearch_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                efetch_proc = subprocess.Popen(efetch_cmd, stdin=esearch_proc.stdout, stdout=f_temp, stderr=subprocess.PIPE, text=True)
-                
-                esearch_proc.stdout.close()
-                
-                # Monitor download progress and merge incrementally
-                merged_samples = 0
-                last_temp_size = 0
-                no_growth_cycles = 0
-                
-                while efetch_proc.poll() is None:  # While download is running
-                    time.sleep(2)  # Check every 2 seconds
+                try:
+                    esearch_proc = subprocess.Popen(esearch_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    efetch_proc = subprocess.Popen(efetch_cmd, stdin=esearch_proc.stdout, stdout=f_temp, stderr=subprocess.PIPE, text=True)
                     
-                    if os.path.exists(temp_file):
-                        current_temp_size = os.path.getsize(temp_file)
+                    esearch_proc.stdout.close()
+                    
+                    # Monitor download progress and merge incrementally
+                    merged_samples = 0
+                    last_temp_size = 0
+                    no_growth_cycles = 0
+                    download_timeout = 300  # 5 minute timeout for download
+                    download_start_time = time.time()
+                    
+                    while efetch_proc.poll() is None:  # While download is running
+                        time.sleep(2)  # Check every 2 seconds
                         
-                        # If temp file has grown significantly, try incremental merge
-                        if current_temp_size > last_temp_size + 50000:  # 50KB growth
-                            print(f"INFO: Temp file grew to {current_temp_size} bytes, attempting incremental merge...", file=sys.stderr)
-                            new_merged = incremental_merge_from_temp(temp_file, file_path, keyword, last_temp_size)
-                            if new_merged > 0:
-                                merged_samples += new_merged
-                                print(f"INFO: Incrementally merged {new_merged} new samples (total: {merged_samples})", file=sys.stderr)
-                            last_temp_size = current_temp_size
-                            no_growth_cycles = 0
-                        else:
-                            no_growth_cycles += 1
-                
-                # Wait for process completion
-                _, efetch_stderr = efetch_proc.communicate()
-                _, esearch_stderr = esearch_proc.communicate()
-                
-                # Final merge of any remaining data
-                if os.path.exists(temp_file):
-                    print(f"INFO: Download completed, performing final merge...", file=sys.stderr)
-                    final_merged = incremental_merge_from_temp(temp_file, file_path, keyword, 0, final_merge=True)
-                    merged_samples += final_merged
-                    print(f"INFO: Final merge added {final_merged} samples. Total merged: {merged_samples}", file=sys.stderr)
+                        # Check for download timeout
+                        if time.time() - download_start_time > download_timeout:
+                            print(f"WARNING: Download timeout after {download_timeout}s, terminating processes", file=sys.stderr)
+                            efetch_proc.terminate()
+                            esearch_proc.terminate()
+                            break
+                        
+                        if os.path.exists(temp_file):
+                            current_temp_size = os.path.getsize(temp_file)
+                            
+                            # If temp file has grown significantly, try incremental merge
+                            if current_temp_size > last_temp_size + 10000:  # Reduced threshold to 10KB
+                                print(f"INFO: Temp file grew to {current_temp_size} bytes, attempting incremental merge...", file=sys.stderr)
+                                new_merged = incremental_merge_from_temp(temp_file, file_path, keyword, last_temp_size)
+                                if new_merged > 0:
+                                    merged_samples += new_merged
+                                    print(f"INFO: Incrementally merged {new_merged} new samples (total: {merged_samples})", file=sys.stderr)
+                                last_temp_size = current_temp_size
+                                no_growth_cycles = 0
+                            else:
+                                no_growth_cycles += 1
                     
-                    # Clean up temp file
-                    os.remove(temp_file)
+                    # Wait for process completion with timeout
+                    try:
+                        _, efetch_stderr = efetch_proc.communicate(timeout=30)
+                        _, esearch_stderr = esearch_proc.communicate(timeout=30)
+                    except subprocess.TimeoutExpired:
+                        print(f"WARNING: Process cleanup timeout, force terminating", file=sys.stderr)
+                        efetch_proc.kill()
+                        esearch_proc.kill()
+                        efetch_stderr = "Process killed due to timeout"
+                        esearch_stderr = "Process killed due to timeout"
+                    
+                    # Always try final merge, even if download failed
+                    if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                        print(f"INFO: Download completed, performing final merge...", file=sys.stderr)
+                        final_merged = incremental_merge_from_temp(temp_file, file_path, keyword, 0, final_merge=True)
+                        merged_samples += final_merged
+                        print(f"INFO: Final merge added {final_merged} samples. Total merged: {merged_samples}", file=sys.stderr)
+                        
+                        # Clean up temp file
+                        os.remove(temp_file)
+                    else:
+                        print(f"WARNING: No data downloaded or temp file empty for '{keyword}'", file=sys.stderr)
 
-                if efetch_proc.returncode != 0:
-                    print(f"ERROR: efetch process failed for '{keyword}'. Stderr: {efetch_stderr}", file=sys.stderr)
-                if esearch_proc.returncode != 0:
-                    print(f"ERROR: esearch process failed for '{keyword}'. Stderr: {esearch_stderr}", file=sys.stderr)
+                    if efetch_proc.returncode != 0:
+                        print(f"ERROR: efetch process failed for '{keyword}'. Stderr: {efetch_stderr}", file=sys.stderr)
+                    if esearch_proc.returncode != 0:
+                        print(f"ERROR: esearch process failed for '{keyword}'. Stderr: {esearch_stderr}", file=sys.stderr)
+                        
+                except Exception as e:
+                    print(f"ERROR: Exception during subprocess execution: {e}", file=sys.stderr)
+                    
+            # Ensure main file has at least a header if no data was merged
+            if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+                print(f"INFO: Creating CSV header for '{keyword}' since no data was downloaded", file=sys.stderr)
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write("Run,ReleaseDate,LoadDate,spots,bases,spots_with_mates,avgLength,size_MB,AssemblyName,download_path,Experiment,LibraryName,LibraryStrategy,LibrarySelection,LibrarySource,LibraryLayout,InsertSize,InsertDev,Platform,Model,SRAStudy,BioProject,Study_Pubmed_id,ProjectID,Sample,BioSample,SampleType,TaxID,ScientificName,SampleName,g1k_pop_code,source,g1k_analysis_group,Subject_ID,Sex,Disease,Tumor,Affection_Status,Analyte_Type,Histological_Type,Body_Site,CenterName,Submission,dbgap_study_accession,Consent,RunHash,ReadHash\n")
+                except Exception as e:
+                    print(f"ERROR: Failed to create fallback CSV header: {e}", file=sys.stderr)
 
         except Exception as e:
             print(f"ERROR: Exception during incremental download for '{keyword}': {e}", file=sys.stderr)
@@ -1232,9 +1287,15 @@ def read_runinfo_batches(file_path: str, batch_size: int = BATCH_SIZE, download_
     while not os.path.exists(file_path):
         time.sleep(1)
         wait_time += 1
-        if wait_time > 60:  # Reduced timeout since we process immediately
-            print(f"ERROR: Timeout waiting for {file_path} to be created.", file=sys.stderr)
+        if wait_time > 120:  # Increased timeout for better reliability
+            print(f"ERROR: Timeout waiting for {file_path} to be created after {wait_time} seconds.", file=sys.stderr)
+            print(f"ERROR: This usually indicates NCBI E-utilities installation issues.", file=sys.stderr)
+            print(f"ERROR: Please check that 'esearch' and 'efetch' commands are installed and working.", file=sys.stderr)
             return
+        elif wait_time % 30 == 0:  # Progress update every 30 seconds
+            print(f"INFO: Still waiting for {file_path} to be created... ({wait_time}s elapsed)", file=sys.stderr)
+    
+    print(f"INFO: File {file_path} found, starting processing", file=sys.stderr)
 
     # Enhanced tracking: monitor both total and eligible samples
     processed_rows = 0
@@ -1363,8 +1424,17 @@ def stream_process_keyword(keyword: str, output_csv: str, llm_proc: SimpleLLMPro
     already_processed = load_already_processed_samples(output_csv) if append else set()
 
     output_dir = os.path.dirname(os.path.abspath(output_csv))
-    os.makedirs(output_dir, exist_ok=True)
-    runinfo_path = os.path.join(output_dir, f"efetched_{keyword.replace(' ','_')}.csv")
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"INFO: Output directory created/verified: {output_dir}", file=sys.stderr)
+    except Exception as e:
+        print(f"ERROR: Failed to create output directory {output_dir}: {e}", file=sys.stderr)
+        raise
+    
+    # Sanitize keyword for filename
+    sanitized_keyword = keyword.replace(' ', '_').replace('/', '_').replace('\\', '_')
+    runinfo_path = os.path.join(output_dir, f"efetched_{sanitized_keyword}.csv")
+    print(f"INFO: Will create intermediate file: {runinfo_path}", file=sys.stderr)
 
     download_thread = start_streaming_download(keyword, runinfo_path)
     
