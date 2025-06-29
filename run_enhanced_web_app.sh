@@ -8,8 +8,8 @@ echo "🚀 Starting Enhanced SRA Web App..."
 # Get script directory for local Ollama detection
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-# Configure PATH for Ollama (common installation locations + local)
-export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$SCRIPT_DIR/ollama_local:$PATH"
+# Configure PATH for Ollama and NCBI tools (common installation locations + local)
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
 
 # Add common Ollama locations to PATH if they exist
 if [ -d "/usr/local/bin" ]; then
@@ -23,6 +23,9 @@ if [ -d "$HOME/.ollama/bin" ]; then
 fi
 if [ -d "$SCRIPT_DIR/ollama_local" ]; then
     export PATH="$SCRIPT_DIR/ollama_local:$PATH"
+fi
+if [ -d "$SCRIPT_DIR/ncbi_tools/edirect" ]; then
+    export PATH="$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
 fi
 
 # Check if virtual environment exists
@@ -77,6 +80,28 @@ else
     echo "   AI features will not work without Ollama"
     echo "   You can install Ollama from: https://ollama.ai"
     echo "   Or re-run the installer which will set up Ollama automatically"
+fi
+
+# Check NCBI E-utilities availability
+echo "🧬 Checking NCBI E-utilities..."
+if command -v esearch >/dev/null 2>&1 && command -v efetch >/dev/null 2>&1; then
+    echo "✅ NCBI E-utilities found at: esearch=$(which esearch), efetch=$(which efetch)"
+    
+    # Test if tools work
+    if timeout 10 esearch -help >/dev/null 2>&1; then
+        echo "✅ NCBI E-utilities are working properly"
+    else
+        echo "⚠️ NCBI E-utilities found but may not be working properly"
+    fi
+else
+    echo "❌ NCBI E-utilities not found in PATH"
+    echo "   Installation locations checked:"
+    echo "   - System PATH locations"
+    echo "   - $SCRIPT_DIR/ncbi_tools/edirect (local installation)"
+    echo ""
+    echo "   Data fetching will not work without NCBI E-utilities"
+    echo "   You can install them from: https://www.ncbi.nlm.nih.gov/books/NBK179288/"
+    echo "   Or re-run the installer which will set up NCBI tools automatically"
 fi
 
 # Check if streamlit is installed
