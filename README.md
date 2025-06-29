@@ -323,6 +323,13 @@ ollama pull qwen3:8b  # Download default model
 # Re-run installer or follow manual NCBI installation
 ```
 
+**"brew command not found" (macOS):**
+The installer uses Homebrew to install Python and other tools. If it's not found, install it with:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+Then, re-run the `install_mac.command` script.
+
 **"Port 8502 already in use":**
 ```bash
 # Another Streamlit app running
