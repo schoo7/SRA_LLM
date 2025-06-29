@@ -96,14 +96,34 @@ For automation, scripts, or HPC pipelines you can bypass the GUI:
 python3 SRA_fetch_1LLM_improved.py \
         --keywords keywords.csv \
         --output my_results.csv \
-        --model qwen3:8b \
-        --max_workers 4
+        --model qwen3:8b
 
 # Help
 python3 SRA_fetch_1LLM_improved.py --help
+
+#### Running in Background (Linux/macOS)
+If you want to keep the analysis running after closing the terminal, use `nohup`:
+
+```bash
+nohup python3 SRA_fetch_1LLM_improved.py \
+      --keywords keywords.csv \
+      --output my_results.csv \
+      --model qwen3:8b \
+      > sra_llm_run.log 2>&1 &
+
+echo "Job is running in the background (PID: $!)"
 ```
 
-The CLI writes the result CSV directly and prints progress to the terminal (ideal for batch jobs).
+This writes output to `sra_llm_run.log` and returns you to the shell immediately. Use `tail -f sra_llm_run.log` to watch progress.
+
+### Windows Background Run
+Windows users can start a background task with:
+```cmd
+start "SRA-LLM" /B python SRA_fetch_1LLM_improved.py ^
+      --keywords keywords.csv ^
+      --output my_results.csv ^
+      --model qwen3:8b
+```
 
 ## 🖥️ Using the Web Interface
 
@@ -230,8 +250,7 @@ For automation and scripting:
 python3 SRA_fetch_1LLM_improved.py \
     --keywords keywords.csv \
     --output my_results.csv \
-    --model qwen3:8b \
-    --max_workers 4
+    --model qwen3:8b
 ```
 
 ### Keyword Format
