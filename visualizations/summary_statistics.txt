@@ -1,0 +1,62 @@
+SRA/GEO Results Analysis Summary
+==================================================
+
+Total samples: 1
+
+SPECIES:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    Homo sapiens: 1 (100.0%)
+
+SEQUENCING_TECHNIQUE:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    RNA-Seq: 1 (100.0%)
+
+SAMPLE_TYPE:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    Cell Line: 1 (100.0%)
+
+CELL_LINE_NAME:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    LASCPC1: 1 (100.0%)
+
+TISSUE_TYPE:
+  Valid entries: 0 (0.0%)
+  Missing/N/A: 1 (100.0%)
+
+DISEASE_DESCRIPTION:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    Prostate neuroendocrine: 1 (100.0%)
+
+TREATMENT:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    Enzalutamide + GSK126: 1 (100.0%)
+
+IS_CHIPSEQ_RELATED_EXPERIMENT:
+  Valid entries: 1 (100.0%)
+  Missing/N/A: 0 (0.0%)
+  Unique values: 1
+  Top values:
+    no: 1 (100.0%)
+
+CHIPSEQ_ANTIBODY_TARGET:
+  Valid entries: 0 (0.0%)
+  Missing/N/A: 1 (100.0%)
+

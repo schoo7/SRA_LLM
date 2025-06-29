@@ -1,0 +1,28 @@
+# SRA-LLM - Enhanced Requirements
+# ================================
+# This file lists all Python packages required for the enhanced SRA-LLM
+# Install with: pip install -r requirements.txt
+
+# Core dependencies for data processing
+tqdm>=4.64.0              # Progress bars
+requests>=2.31.0          # HTTP requests for GEO data
+pandas>=2.0.0             # Data manipulation and analysis
+numpy>=1.24.0             # Numerical computing
+
+# Visualization dependencies
+matplotlib>=3.7.0         # Plotting and visualization
+wordcloud>=1.9.0          # Word cloud generation
+plotly>=5.17.0            # Interactive plotting
+
+# Web interface dependencies
+streamlit>=1.28.0         # Web app framework
+
+# LLM and AI dependencies
+langchain-ollama>=0.1.0   # Ollama integration for LangChain
+
+# Image processing for web interface
+Pillow>=10.0.0            # Image processing
+
+# System utilities
+psutil>=5.9.0             # System and process utilities
+watchdog>=6.0.0           # File monitoring for better Streamlit performance
