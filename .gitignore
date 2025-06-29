@@ -1,0 +1,146 @@
+# SRA-LLM .gitignore
+# ===================
+# This file tells Git which files to ignore when committing to GitHub
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+sra_env/
+env/
+ENV/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Data files (large CSV/TSV files containing results)
+*.csv
+*.tsv
+!keyword.csv  # Keep the example keyword file
+!test.csv     # Keep small test files
+
+# Log files
+*.log
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.temp
+*.backup
+*_backup.*
+*_temp.*
+*_corrupted.*
+
+# HTML reports (can be large)
+*.html
+
+# Output directories
+output/
+results/
+temp/
+downloads/
+
+# JSON output files from LLM processing
+phase1_json_outputs/
+*_phase1_*.json
+*_geo_accessions_debug.json
+
+# Visualization outputs (these are generated, users should create their own)
+visualizations/*.png
+visualizations/*.pdf
+visualizations/*.jpg
+visualizations/*.svg
+!visualizations/.gitkeep  # Keep directory structure
+
+# Large data files
+*.gz
+*.zip
+*.tar
+*.bz2
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Virtual environments
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+
+# Streamlit
+.streamlit/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# NCBI tools (if downloaded locally)
+edirect/
+ncbi_tools/
+
+# Ollama models (users should download their own)
+ollama_models/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# pytest
+.pytest_cache/
+
+# Documentation builds
+docs/_build/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Windows
+*.stackdump
+*.exe
+*.msi
+
+# Large result files - users should generate their own
+efetched_*.csv
+result_*.csv
+sra_results_*.csv
+*_results.csv
+run_*.log
+sra_geo_analysis_report*.html
+
+# Keep important example files but ignore large generated ones
+!README.md
+!INSTALLATION_GUIDE.md
+!requirements.txt
+!keyword.csv 
