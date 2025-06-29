@@ -211,6 +211,7 @@ class SRAAnalyzerInstaller:
             
             # Web interface dependencies
             "streamlit>=1.28.0",         # Web app framework
+            "packaging==24.2",           # Specify version to avoid conflicts
             
             # LLM and AI dependencies
             "langchain-ollama>=0.1.0",   # Ollama integration for LangChain
@@ -689,25 +690,24 @@ watchdog>=6.0.0           # File monitoring for better Streamlit performance
         print("1. Make sure these files are in the same directory:")
         print("   • SRA_fetch_1LLM_improved.py")
         print("   • visualize_results.py") 
-        print("   • SRA_web_app_fixed.py")
+        print("   • SRA_web_app_enhanced.py")
         print("   • keyword.csv (your keywords file)")
         
         print("\n🚀 How to Run:")
         if self.system == "windows":
-            print("   • Double-click 'run_web_interface.bat' for web interface")
+            print("   • Double-click 'run_windows.bat' for web interface")
             print("   • Double-click 'run_sra_analyzer.bat' for command line")
         else:
-            print("   • Double-click 'run_web_interface.sh' for web interface")
+            print("   • Double-click 'run_mac.command' for web interface")
             print("   • Run './run_sra_analyzer.sh' for command line")
         
         print("\n🤖 Ollama Setup (if needed):")
-        print("1. Open Terminal/Command Prompt")
-        print("2. Run: ollama pull qwen3:8b")
-        print("3. This downloads the AI model (may take a few minutes)")
+        print("1. Open the Web Interface (e.g., run_mac.command)")
+        print("2. Use the sidebar to select and install an AI model (e.g., qwen3:8b).")
+        print("3. The model will download automatically.")
         
         print("\n📚 Documentation:")
         print("• README.md - Complete usage instructions")
-        print("• PROCESS_MANAGEMENT_GUIDE.md - Advanced usage")
         
         print(f"\n{self.colors['blue']}🎯 You're all set! Happy analyzing!{self.colors['end']}")
 

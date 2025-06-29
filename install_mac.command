@@ -110,7 +110,6 @@ else
     read -p "Press Enter to exit..."
     exit 1
 fi
-
 echo ""
 echo "🎉 Installation completed successfully!"
 echo ""
@@ -138,4 +137,5 @@ echo "   • Watch real-time progress and visualizations"
 echo ""
 echo "💡 The installer is complete. Use run_mac.command to start the web interface."
 echo ""
-read -p "Press Enter to finish..." 
+read -p "Press Enter to finish..."
+exit 0 
