@@ -33,12 +33,21 @@ SRA-LLM is like having an AI research assistant that can:
 3. Double-click `run_windows.bat` (starts web interface)
 4. Browser opens automatically at `http://localhost:8502`
 
-**For Any Platform:**
+### Option 2: Manual Installation (All Platforms)
+
+#### 2A. Automated Script (Python **must** be installed first)
+
 ```bash
-python3 install_sra_analyzer.py  # Complete automated setup
+# macOS (Homebrew):  brew install python@3.11
+# Windows:           Download Python 3.11+ and **check "Add Python to PATH"**
+# Verify:
+python3 --version   # Should show Python 3.11.x or newer
+
+# Run the cross-platform installer (sets up everything else)
+python3 install_sra_analyzer.py
 ```
 
-### Option 2: Manual Installation
+#### 2B. Fully Manual Setup
 
 ```bash
 # 1. Clone the repository
@@ -53,14 +62,48 @@ source sra_env/bin/activate  # On Windows: sra_env\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Install Ollama (AI engine)
-# Visit https://ollama.com and follow installation instructions
+#    Visit https://ollama.com and follow installation instructions
 
 # 5. Install NCBI E-utilities
-# Follow guide: https://www.ncbi.nlm.nih.gov/books/NBK179288/
+#    macOS/Linux: sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
+#    Windows: download edirect.zip and add to PATH
 
 # 6. Start the web interface
 streamlit run SRA_web_app_enhanced.py --server.port 8502
 ```
+
+## 🏃 Usage Modes (GUI vs CLI)
+
+### 1. GUI – Web Interface (Recommended)
+
+| macOS | Windows | Linux |
+|-------|---------|-------|
+| `run_mac.command` | `run_windows.bat` | `./run_enhanced_web_app.sh` |
+
+The browser opens at **http://localhost:8502**. Use the three tabs:
+1. **ANALYSIS** – enter keywords, watch live progress
+2. **VISUALIZATIONS** – explore auto-generated charts
+3. **DATA EXPLORER** – filter, plot, and export results
+
+Ollama models can be installed from the sidebar – just pick **qwen3:8b** and click **Install**.
+
+### 2. CLI – Command-Line Interface
+
+For automation, scripts, or HPC pipelines you can bypass the GUI:
+
+```bash
+# Basic usage
+python3 SRA_fetch_1LLM_improved.py \
+        --keywords keywords.csv \
+        --output my_results.csv \
+        --model qwen3:8b \
+        --max_workers 4
+
+# Help
+python3 SRA_fetch_1LLM_improved.py --help
+```
+
+The CLI writes the result CSV directly and prints progress to the terminal (ideal for batch jobs).
 
 ## 🖥️ Using the Web Interface
 
