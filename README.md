@@ -23,13 +23,15 @@ SRA-LLM is like having an AI research assistant that can:
 
 **For macOS:**
 1. Download the project files
-2. Double-click `Start_SRA_Web_App.command`
-3. The installer will set up everything automatically and open your browser!
+2. Double-click `install_mac.command` (sets up everything)
+3. Double-click `run_mac.command` (starts web interface)
+4. Browser opens automatically at `http://localhost:8502`
 
 **For Windows:**
 1. Download the project files  
-2. Run `install_windows.bat` (sets up everything)
-3. Run `run_enhanced_web_app.sh` in Git Bash or WSL
+2. Right-click `install_windows.bat` → "Run as administrator" (sets up everything)
+3. Double-click `run_windows.bat` (starts web interface)
+4. Browser opens automatically at `http://localhost:8502`
 
 **For Any Platform:**
 ```bash
@@ -67,7 +69,11 @@ streamlit run SRA_web_app_enhanced.py --server.port 8502
 Choose your preferred method:
 
 **Double-click Method (macOS):**
-- Double-click `Start_SRA_Web_App.command`
+- Double-click `run_mac.command`
+- Browser opens automatically to `http://localhost:8502`
+
+**Double-click Method (Windows):**
+- Double-click `run_windows.bat`
 - Browser opens automatically to `http://localhost:8502`
 
 **Command Line Method:**

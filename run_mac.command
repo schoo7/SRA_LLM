@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# SRA-LLM Enhanced Web App Launcher
-# ==================================
-# Double-clickable macOS launcher for easy access
-# Automatically sets up environment and opens browser
+# SRA-LLM Web Interface Launcher for macOS
+# ========================================
+# Double-clickable launcher for the web interface
+# Run install_mac.command first if not already installed
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR"
 
 clear
-echo "🧬 SRA-LLM Enhanced Web Interface"
-echo "================================="
+echo "🧬 SRA-LLM Web Interface Launcher"
+echo "================================"
 echo "📍 Working directory: $SCRIPT_DIR"
 echo ""
 
@@ -19,7 +19,7 @@ echo ""
 if [ ! -f "SRA_web_app_enhanced.py" ]; then
     echo "❌ Error: SRA_web_app_enhanced.py not found"
     echo ""
-    echo "This script should be in the same folder as:"
+    echo "This launcher should be in the same folder as:"
     echo "  • SRA_web_app_enhanced.py"
     echo "  • SRA_fetch_1LLM_improved.py"
     echo "  • requirements.txt"
@@ -30,35 +30,14 @@ fi
 
 # Check for virtual environment
 if [ ! -d "sra_env" ]; then
-    echo "🔧 Virtual environment not found. Setting up..."
+    echo "❌ Virtual environment not found!"
     echo ""
-    
-    # Check if Python is available
-    if ! command -v python3 &> /dev/null; then
-        echo "❌ Python 3 not found. Please install Python first:"
-        echo "   Download from: https://python.org/downloads"
-        echo ""
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-    
-    # Auto-install if install_sra_analyzer.py is available
-    if [ -f "install_sra_analyzer.py" ]; then
-        echo "🚀 Running automatic installation..."
-        python3 install_sra_analyzer.py
-        
-        if [ $? -ne 0 ]; then
-            echo "❌ Installation failed. Please check error messages above."
-            read -p "Press Enter to exit..."
-            exit 1
-        fi
-    else
-        echo "⚠️  Please run the installation first:"
-        echo "   python3 install_sra_analyzer.py"
-        echo ""
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
+    echo "🔧 You need to run the installer first:"
+    echo "   • Double-click: install_mac.command"
+    echo "   • This will set up Python, packages, and tools"
+    echo ""
+    read -p "Press Enter to exit..."
+    exit 1
 fi
 
 # Check if run script exists
@@ -73,6 +52,24 @@ fi
 # Make sure run script is executable
 chmod +x run_enhanced_web_app.sh
 
+# Check if Ollama is available
+echo "🔍 Checking Ollama installation..."
+if command -v ollama >/dev/null 2>&1; then
+    echo "✅ Ollama found"
+    
+    # Check for models
+    MODELS=$(ollama list 2>/dev/null | tail -n +2 | wc -l)
+    if [ "$MODELS" -gt 0 ]; then
+        echo "✅ $MODELS AI model(s) installed"
+    else
+        echo "⚠️  No AI models found - you can install them through the web interface"
+    fi
+else
+    echo "⚠️  Ollama not found - AI features may not work"
+    echo "   Run install_mac.command to set up Ollama"
+fi
+
+echo ""
 echo "🌐 Starting enhanced web interface..."
 echo "📊 Features: Real-time updates, visualizations, data explorer"
 echo "🔗 Browser will open automatically at: http://localhost:8502"

@@ -19,12 +19,14 @@ After installation, you'll have:
 1. Download all project files to a folder (e.g., Desktop/SRA_LLM)
 2. Right-click on `install_windows.bat` → "Run as administrator"
 3. Wait for installation to complete (5-10 minutes)
-4. Double-click `run_web_interface.bat` to start!
+4. Double-click `run_windows.bat` to start web interface!
+5. Browser opens automatically at `http://localhost:8502`
 
 **For macOS:**
 1. Download all project files to a folder
-2. Double-click `Start_SRA_Web_App.command`
-3. Browser opens automatically at `http://localhost:8502`
+2. Double-click `install_mac.command` (complete setup)
+3. Double-click `run_mac.command` (start web interface)
+4. Browser opens automatically at `http://localhost:8502`
 
 **For Linux/Any Platform:**
 ```bash
