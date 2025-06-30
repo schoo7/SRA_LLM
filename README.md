@@ -352,38 +352,13 @@ source sra_env/bin/activate  # Activate virtual environment
 pip install -r requirements.txt  # Reinstall packages
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! See our [GitHub repository](https://github.com/schoo7/SRA_LLM) for:
-
-- 🐛 **Bug Reports**: Issues and improvements
-- 💡 **Feature Requests**: New functionality ideas  
-- 📖 **Documentation**: Help improve guides
-- 🧪 **Testing**: Validate on different systems
-
 ## 📞 Support
 
 - **GitHub Issues**: [https://github.com/schoo7/SRA_LLM/issues](https://github.com/schoo7/SRA_LLM/issues)
 - **Email**: siyuan.cheng@yale.edu
 - **Lab**: Mu Lab, Yale University
 
-## 📄 License
 
-MIT License - see LICENSE file for details.
-
-## 🙏 Citation
-
-If SRA-LLM helps your research, please consider citing:
-
-```bibtex
-@software{sra_llm_2024,
-  title={SRA-LLM: Automated NGS Data Fetching and AI-Powered Metadata Processing},
-  author={Cheng, Siyuan},
-  year={2024},
-  url={https://github.com/schoo7/SRA_LLM},
-  organization={Mu Lab, Yale University}
-}
-```
 
 ---
 
