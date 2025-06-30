@@ -510,79 +510,224 @@ class SRAAnalyzerInstaller:
             return False
 
     def install_ncbi_tools_windows(self):
-        """Install NCBI E-utilities on Windows."""
+        """Install NCBI E-utilities on Windows using system-wide methods."""
         try:
-            # Check if already installed
-            result = subprocess.run(["efetch", "-help"], capture_output=True, text=True)
+            # Check if already installed system-wide
+            result = subprocess.run(["where", "esearch"], capture_output=True, text=True)
             if result.returncode == 0:
-                self.print_success("NCBI E-utilities already installed!")
+                self.print_success("NCBI E-utilities already installed system-wide!")
                 return True
-        except FileNotFoundError:
+        except Exception:
             pass
         
-        print("Installing NCBI E-utilities for Windows...")
+        print("Installing NCBI E-utilities system-wide for Windows...")
         
-        # Create tools directory
-        tools_dir = self.install_dir / "ncbi_tools"
-        tools_dir.mkdir(exist_ok=True)
-        
-        # Download E-utilities
-        eutils_url = "https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/versions/current/edirect_pc.exe"
-        installer_path = tools_dir / "edirect_pc.exe"
-        
+        # Try official system installation to user directory
         try:
+            print("Installing NCBI E-utilities using official installer...")
+            
+            # Create a temporary directory for installation
+            temp_dir = self.install_dir / "temp_install"
+            temp_dir.mkdir(exist_ok=True)
+            
+            # Download and run the official installer
+            eutils_url = "https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/versions/current/edirect_pc.exe"
+            installer_path = temp_dir / "edirect_pc.exe"
+            
+            print(f"Downloading installer from {eutils_url}...")
+            urllib.request.urlretrieve(eutils_url, installer_path)
+            
+            # Create the installation directory in user's home
+            home_edirect = Path.home() / "edirect"
+            home_edirect.mkdir(exist_ok=True)
+            
+            # Extract to home directory
+            os.chdir(home_edirect)
+            subprocess.run([str(installer_path)], check=True)
+            
+            # Clean up
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            
+            self.print_success("NCBI E-utilities installed to user directory!")
+            print(f"✓ Installed to: {home_edirect}")
+            print("Please add the following to your PATH:")
+            print(f"   {home_edirect}")
+            print("This can be done through System Properties > Environment Variables")
+            return True
+            
+        except Exception as e:
+            self.print_error(f"System installation failed: {e}")
+            print("Falling back to local installation...")
+            return self.install_ncbi_tools_local_windows()
+    
+    def install_ncbi_tools_local_windows(self):
+        """Fallback: Install NCBI E-utilities locally on Windows."""
+        try:
+            print("Installing NCBI E-utilities locally (fallback method)...")
+            
+            # Create tools directory
+            tools_dir = self.install_dir / "ncbi_tools"
+            tools_dir.mkdir(exist_ok=True)
+            
+            # Download E-utilities
+            eutils_url = "https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/versions/current/edirect_pc.exe"
+            installer_path = tools_dir / "edirect_pc.exe"
+            
             urllib.request.urlretrieve(eutils_url, installer_path)
             
             # Run installer
             os.chdir(tools_dir)
             subprocess.run([str(installer_path)], check=True)
             
-            # Add to PATH
-            eutils_path = tools_dir / "edirect"
-            self.add_to_path_windows(str(eutils_path))
-            
-            self.print_success("NCBI E-utilities installed!")
+            self.print_success("NCBI E-utilities installed locally!")
+            print(f"✓ Tools available in: {tools_dir / 'edirect'}")
             return True
             
         except Exception as e:
-            self.print_error(f"Failed to install NCBI E-utilities: {e}")
+            self.print_error(f"Local installation failed: {e}")
             return False
 
     def install_ncbi_tools_mac(self):
-        """Install NCBI E-utilities on macOS."""
+        """Install NCBI E-utilities on macOS using system-wide methods."""
         try:
-            # Check if already installed
-            result = subprocess.run(["efetch", "-help"], capture_output=True, text=True)
+            # Check if already installed system-wide
+            result = subprocess.run(["which", "esearch"], capture_output=True, text=True)
             if result.returncode == 0:
-                self.print_success("NCBI E-utilities already installed!")
+                self.print_success("NCBI E-utilities already installed system-wide!")
                 return True
-        except FileNotFoundError:
+        except Exception:
             pass
         
-        print("Installing NCBI E-utilities for macOS...")
+        print("Installing NCBI E-utilities system-wide for macOS...")
         
-        # Create tools directory
-        tools_dir = self.install_dir / "ncbi_tools"
-        tools_dir.mkdir(exist_ok=True)
+        # First try Homebrew installation (preferred)
+        if self.check_homebrew_availability():
+            try:
+                print("Installing NCBI E-utilities via Homebrew...")
+                subprocess.run(["brew", "install", "edirect"], check=True)
+                
+                # Verify installation
+                result = subprocess.run(["which", "esearch"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    self.print_success("NCBI E-utilities installed via Homebrew!")
+                    return True
+                    
+            except subprocess.CalledProcessError as e:
+                print(f"Homebrew installation failed: {e}")
+                print("Trying official installation method...")
         
-        # Download and install E-utilities
+        # If Homebrew fails, try official system installation
         try:
+            print("Installing NCBI E-utilities using official installer to $HOME/edirect...")
+            
+            # Download and run official installer
+            install_cmd = """
+            cd $HOME
+            curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh | bash
+            echo 'export PATH=$HOME/edirect:$PATH' >> $HOME/.bash_profile
+            echo 'export PATH=$HOME/edirect:$PATH' >> $HOME/.zshrc
+            """
+            
+            subprocess.run(["bash", "-c", install_cmd], check=True)
+            
+            # Check if installation worked
+            edirect_path = Path.home() / "edirect"
+            if edirect_path.exists():
+                self.print_success("NCBI E-utilities installed to $HOME/edirect!")
+                print("✓ Added to .bash_profile and .zshrc")
+                print("Please run 'source ~/.bash_profile' or 'source ~/.zshrc' to update PATH")
+                print("Or restart your terminal")
+                return True
+            else:
+                raise Exception("Installation completed but edirect directory not found")
+                
+        except Exception as e:
+            self.print_error(f"System installation failed: {e}")
+            print("Falling back to local installation...")
+            return self.install_ncbi_tools_local()
+    
+    def install_ncbi_tools_local(self):
+        """Fallback: Install NCBI E-utilities locally as last resort."""
+        try:
+            print("Installing NCBI E-utilities locally (fallback method)...")
+            
+            # Create tools directory
+            tools_dir = self.install_dir / "ncbi_tools"
+            tools_dir.mkdir(exist_ok=True)
+            
+            # Download and install E-utilities locally
             os.chdir(tools_dir)
             subprocess.run([
                 "bash", "-c", 
                 "curl -s https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh | bash"
             ], check=True)
             
-            # Add to PATH
-            eutils_path = tools_dir / "edirect"
-            self.add_to_path_mac(str(eutils_path))
-            
-            self.print_success("NCBI E-utilities installed!")
-            return True
-            
+            # Create symlinks to make tools available
+            edirect_dir = tools_dir / "edirect"
+            if edirect_dir.exists():
+                # Create a bin directory for symlinks
+                bin_dir = self.install_dir / "bin"
+                bin_dir.mkdir(exist_ok=True)
+                
+                # Create symlinks for main tools
+                tools = ["esearch", "efetch", "elink", "efilter", "epost", "einfo", "esummary", "xtract", "nquire"]
+                for tool in tools:
+                    tool_path = edirect_dir / tool
+                    if tool_path.exists():
+                        symlink_path = bin_dir / tool
+                        if symlink_path.exists():
+                            symlink_path.unlink()
+                        symlink_path.symlink_to(tool_path)
+                
+                self.print_success("NCBI E-utilities installed locally with symlinks!")
+                print(f"✓ Tools available in: {bin_dir}")
+                return True
+            else:
+                raise Exception("Local installation failed - edirect directory not created")
+                
         except Exception as e:
-            self.print_error(f"Failed to install NCBI E-utilities: {e}")
+            self.print_error(f"Local installation failed: {e}")
             return False
+
+    def create_symlinks_for_ncbi_tools(self):
+        """Create symlinks in the project bin directory for system-installed NCBI tools."""
+        print("🔗 Creating symlinks for system-installed NCBI tools...")
+        
+        # Create bin directory
+        bin_dir = self.install_dir / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        
+        # System installation paths to check
+        system_paths = [
+            "/usr/local/bin",
+            "/opt/homebrew/bin",
+            Path.home() / "edirect"
+        ]
+        
+        # NCBI tools to link
+        ncbi_tools = ["esearch", "efetch", "elink", "einfo", "esummary", "epost", "espell", "ecitmatch"]
+        
+        for tool in ncbi_tools:
+            symlink_path = bin_dir / tool
+            
+            # Remove existing symlink if it exists
+            if symlink_path.exists() or symlink_path.is_symlink():
+                symlink_path.unlink()
+            
+            # Find the tool in system paths
+            for system_path in system_paths:
+                tool_path = Path(system_path) / tool
+                if tool_path.exists() and tool_path.is_file():
+                    try:
+                        symlink_path.symlink_to(tool_path)
+                        print(f"✅ Created symlink: {tool} -> {tool_path}")
+                        break
+                    except OSError as e:
+                        print(f"⚠️ Could not create symlink for {tool}: {e}")
+            else:
+                print(f"⚠️ {tool} not found in system paths")
+        
+        return True
 
     def add_to_path_windows(self, path):
         """Add directory to Windows PATH."""
@@ -681,6 +826,27 @@ echo "========================"
 
 cd "{self.install_dir}"
 
+# Configure PATH for NCBI tools (system-wide first, then local fallbacks)
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/edirect:$PATH"
+if [ -d "{self.install_dir}/bin" ]; then
+    export PATH="{self.install_dir}/bin:$PATH"
+fi
+if [ -d "{self.install_dir}/ncbi_tools/edirect" ]; then
+    export PATH="{self.install_dir}/ncbi_tools/edirect:$PATH"
+fi
+
+# Verify NCBI tools are available
+if ! command -v esearch >/dev/null 2>&1; then
+    echo "⚠️  WARNING: NCBI E-utilities not found in PATH"
+    echo "Please ensure NCBI E-utilities are installed system-wide or restart terminal"
+    echo "Checked locations:"
+    echo "  - /usr/local/bin (Homebrew Intel)"
+    echo "  - /opt/homebrew/bin (Homebrew Apple Silicon)"
+    echo "  - $HOME/edirect (Official installation)"
+    echo "  - {self.install_dir}/bin (Local symlinks)"
+    echo "  - {self.install_dir}/ncbi_tools/edirect (Local installation)"
+fi
+
 # Activate virtual environment
 source "{self.venv_dir}/bin/activate"
 
@@ -703,6 +869,27 @@ echo "🌐 SRA-LLM - Enhanced Web Interface"
 echo "=================================="
 
 cd "{self.install_dir}"
+
+# Configure PATH for NCBI tools (system-wide first, then local fallbacks)
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/edirect:$PATH"
+if [ -d "{self.install_dir}/bin" ]; then
+    export PATH="{self.install_dir}/bin:$PATH"
+fi
+if [ -d "{self.install_dir}/ncbi_tools/edirect" ]; then
+    export PATH="{self.install_dir}/ncbi_tools/edirect:$PATH"
+fi
+
+# Verify NCBI tools are available
+if ! command -v esearch >/dev/null 2>&1; then
+    echo "⚠️  WARNING: NCBI E-utilities not found in PATH"
+    echo "Please ensure NCBI E-utilities are installed system-wide or restart terminal"
+    echo "Checked locations:"
+    echo "  - /usr/local/bin (Homebrew Intel)"
+    echo "  - /opt/homebrew/bin (Homebrew Apple Silicon)"
+    echo "  - $HOME/edirect (Official installation)"
+    echo "  - {self.install_dir}/bin (Local symlinks)"
+    echo "  - {self.install_dir}/ncbi_tools/edirect (Local installation)"
+fi
 
 # Activate virtual environment
 source "{self.venv_dir}/bin/activate"
@@ -830,6 +1017,9 @@ watchdog>=6.0.0           # File monitoring for better Streamlit performance
         self.print_step(5, total_steps, "Installing NCBI E-utilities")
         if not self.install_ncbi_tools():
             self.print_warning("NCBI tools installation failed - you can install them manually later")
+        else:
+            # Create symlinks for system-installed tools
+            self.create_symlinks_for_ncbi_tools()
         
         # Step 6: Create requirements file
         self.print_step(6, total_steps, "Creating requirements file")

@@ -8,8 +8,8 @@ echo "🚀 Starting Enhanced SRA Web App..."
 # Get script directory for local Ollama detection
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-# Configure PATH for Ollama and NCBI tools (common installation locations + local)
-export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
+# Configure PATH for Ollama and NCBI tools (system-wide first, then local)
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/edirect:/usr/bin:/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/bin:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
 
 # Add common Ollama locations to PATH if they exist
 if [ -d "/usr/local/bin" ]; then
@@ -23,6 +23,9 @@ if [ -d "$HOME/.ollama/bin" ]; then
 fi
 if [ -d "$SCRIPT_DIR/ollama_local" ]; then
     export PATH="$SCRIPT_DIR/ollama_local:$PATH"
+fi
+if [ -d "$SCRIPT_DIR/bin" ]; then
+    export PATH="$SCRIPT_DIR/bin:$PATH"
 fi
 if [ -d "$SCRIPT_DIR/ncbi_tools/edirect" ]; then
     export PATH="$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
@@ -96,12 +99,16 @@ if command -v esearch >/dev/null 2>&1 && command -v efetch >/dev/null 2>&1; then
 else
     echo "❌ NCBI E-utilities not found in PATH"
     echo "   Installation locations checked:"
-    echo "   - System PATH locations"
-    echo "   - $SCRIPT_DIR/ncbi_tools/edirect (local installation)"
+    echo "   - /usr/local/bin (Homebrew Intel)"
+    echo "   - /opt/homebrew/bin (Homebrew Apple Silicon)"
+    echo "   - $HOME/edirect (Official installation)"
+    echo "   - $SCRIPT_DIR/bin (Local symlinks)"
+    echo "   - $SCRIPT_DIR/ncbi_tools/edirect (Local installation)"
     echo ""
-    echo "   Data fetching will not work without NCBI E-utilities"
-    echo "   You can install them from: https://www.ncbi.nlm.nih.gov/books/NBK179288/"
-    echo "   Or re-run the installer which will set up NCBI tools automatically"
+    echo "   🔧 To fix this issue:"
+    echo "   1. Re-run the installer (install_sra_analyzer.py) to install NCBI tools system-wide"
+    echo "   2. Or restart your terminal after installation"
+    echo "   3. Data fetching will not work without NCBI E-utilities"
 fi
 
 # Check if streamlit is installed

@@ -14,9 +14,9 @@ cd "$SCRIPT_DIR"
 
 echo "📍 Working directory: $SCRIPT_DIR"
 
-# Enhanced PATH configuration for Ollama and NCBI tools
+# Enhanced PATH configuration for Ollama and NCBI tools (system-wide first)
 echo "🔧 Configuring PATH for Ollama and NCBI E-utilities..."
-export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/edirect:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/bin:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
 
 # Function to find Ollama binary
 find_ollama_binary() {
@@ -88,11 +88,16 @@ check_ncbi_tools() {
     else
         echo "❌ NCBI E-utilities not found in PATH"
         echo "   Installation locations checked:"
-        echo "   - System PATH locations"
-        echo "   - $SCRIPT_DIR/ncbi_tools/edirect (local installation)"
+        echo "   - /usr/local/bin (Homebrew Intel)"
+        echo "   - /opt/homebrew/bin (Homebrew Apple Silicon)"
+        echo "   - $HOME/edirect (Official installation)"
+        echo "   - $SCRIPT_DIR/bin (Local symlinks)"
+        echo "   - $SCRIPT_DIR/ncbi_tools/edirect (Local installation)"
         echo ""
-        echo "   Data fetching will not work without NCBI E-utilities"
-        echo "   Re-run install_mac.command to install NCBI tools automatically"
+        echo "   🔧 To fix this issue:"
+        echo "   1. Re-run install_mac.command to install NCBI tools system-wide"
+        echo "   2. Or restart your terminal after installation"
+        echo "   3. Data fetching will not work without NCBI E-utilities"
     fi
 }
 
@@ -113,8 +118,8 @@ fi
 echo "🐍 Activating virtual environment..."
 source "sra_env/bin/activate"
 
-# Re-export PATH to ensure it's available in virtual environment
-export PATH="/usr/local/bin:/opt/homebrew/bin:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
+# Re-export PATH to ensure it's available in virtual environment (system-wide first)
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/edirect:~/.ollama/bin:$SCRIPT_DIR/ollama_local:$SCRIPT_DIR/bin:$SCRIPT_DIR/ncbi_tools/edirect:$PATH"
 
 # Check if web app script exists
 if [ ! -f "SRA_web_app_enhanced.py" ]; then
