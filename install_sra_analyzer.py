@@ -288,7 +288,7 @@ class SRAAnalyzerInstaller:
             return False
 
     def install_ollama_mac(self):
-        """Install Ollama on macOS."""
+        """Install Ollama on macOS with enhanced Homebrew handling."""
         try:
             # Check if Ollama is already installed
             result = subprocess.run(["ollama", "--version"], capture_output=True, text=True)
@@ -298,18 +298,34 @@ class SRAAnalyzerInstaller:
         except FileNotFoundError:
             pass
         
-        # Try Homebrew first
-        try:
-            subprocess.run(["brew", "--version"], capture_output=True, check=True)
-            print("Installing Ollama via Homebrew...")
-            subprocess.run(["brew", "install", "ollama"], check=True)
-            self.print_success("Ollama installed via Homebrew!")
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pass
+        # Try Homebrew first (if available)
+        homebrew_available = self.check_homebrew_availability()
         
-        # Fallback: Use official installer script (more reliable)
-        print("Installing Ollama using official installer...")
+        if homebrew_available:
+            print("Installing Ollama via Homebrew...")
+            try:
+                subprocess.run(["brew", "install", "ollama"], check=True)
+                self.print_success("Ollama installed via Homebrew!")
+                return True
+            except subprocess.CalledProcessError as e:
+                self.print_warning(f"Homebrew Ollama installation failed: {e}")
+        
+        # If Homebrew not available, try to install it
+        if not homebrew_available:
+            print("🍺 Homebrew not found. Attempting to install Homebrew for better package management...")
+            if self.install_homebrew():
+                print("✅ Homebrew installed successfully! Now trying to install Ollama...")
+                try:
+                    subprocess.run(["brew", "install", "ollama"], check=True)
+                    self.print_success("Ollama installed via newly installed Homebrew!")
+                    return True
+                except subprocess.CalledProcessError as e:
+                    self.print_warning(f"Ollama installation failed even with new Homebrew: {e}")
+            else:
+                print("⚠️ Homebrew installation failed, falling back to alternative methods")
+        
+        # Fallback: Use official installer script (more reliable than direct download)
+        print("Installing Ollama using official installer script...")
         try:
             # Download and run the official Ollama installer
             subprocess.run([
@@ -322,7 +338,7 @@ class SRAAnalyzerInstaller:
             try:
                 result = subprocess.run(["ollama", "--version"], capture_output=True, text=True)
                 if result.returncode == 0:
-                    self.print_success("Ollama installed successfully!")
+                    self.print_success("Ollama installed successfully via official installer!")
                     return True
                 else:
                     # Fallback to local installation if system install failed
@@ -333,8 +349,107 @@ class SRAAnalyzerInstaller:
                 
         except Exception as e:
             self.print_warning(f"Official installer failed: {e}")
-            # Fallback to local installation
+            # Final fallback to local installation
             return self.install_ollama_local()
+
+    def check_homebrew_availability(self):
+        """Check if Homebrew is available and working."""
+        try:
+            result = subprocess.run(["brew", "--version"], capture_output=True, check=True, text=True)
+            print(f"✅ Homebrew found: {result.stdout.split()[1] if result.stdout else 'version unknown'}")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("❌ Homebrew not found or not working")
+            return False
+
+    def install_homebrew(self):
+        """Install Homebrew on macOS."""
+        print("🍺 Installing Homebrew (this may take a few minutes)...")
+        print("📋 You may be prompted for your password during installation")
+        
+        try:
+            # Run the official Homebrew installer
+            install_cmd = [
+                "bash", "-c",
+                '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+            ]
+            
+            print("⏳ Running Homebrew installer...")
+            result = subprocess.run(install_cmd, check=True, text=True)
+            
+            # Verify installation
+            time.sleep(2)
+            
+            # Check if brew is now available in common locations
+            brew_paths = [
+                "/opt/homebrew/bin/brew",  # Apple Silicon Macs
+                "/usr/local/bin/brew",     # Intel Macs
+            ]
+            
+            for brew_path in brew_paths:
+                if os.path.exists(brew_path):
+                    # Add to current PATH for this session
+                    brew_dir = os.path.dirname(brew_path)
+                    current_path = os.environ.get('PATH', '')
+                    if brew_dir not in current_path:
+                        os.environ['PATH'] = f"{brew_dir}:{current_path}"
+                    
+                    # Test if it works
+                    try:
+                        subprocess.run(["brew", "--version"], check=True, capture_output=True)
+                        self.print_success("Homebrew installed and verified!")
+                        
+                        # Add to shell profile for permanent access
+                        self.add_brew_to_shell_profile(brew_dir)
+                        return True
+                    except subprocess.CalledProcessError:
+                        continue
+            
+            # If we get here, installation may have succeeded but brew isn't accessible
+            self.print_warning("Homebrew may have been installed but is not immediately accessible")
+            return False
+            
+        except subprocess.CalledProcessError as e:
+            self.print_error(f"Homebrew installation failed: {e}")
+            print("📋 You can install Homebrew manually later by running:")
+            print('   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"')
+            return False
+        except Exception as e:
+            self.print_error(f"Unexpected error during Homebrew installation: {e}")
+            return False
+
+    def add_brew_to_shell_profile(self, brew_dir):
+        """Add Homebrew to shell profile for permanent access."""
+        try:
+            # Determine the appropriate shell profile file
+            shell_profiles = [
+                Path.home() / ".zshrc",        # Modern macOS default
+                Path.home() / ".bash_profile", # Older macOS default
+                Path.home() / ".bashrc"        # Alternative
+            ]
+            
+            # Use .zshrc as default for modern macOS
+            profile_file = shell_profiles[0]
+            
+            # Check if any profile already exists
+            for profile in shell_profiles:
+                if profile.exists():
+                    profile_file = profile
+                    break
+            
+            # Add Homebrew to PATH in profile
+            brew_export = f'\n# Added by SRA-LLM installer\nexport PATH="{brew_dir}:$PATH"\n'
+            
+            with open(profile_file, "a") as f:
+                f.write(brew_export)
+            
+            print(f"✅ Added Homebrew to {profile_file}")
+            print(f"🔄 Please run 'source {profile_file}' or restart your terminal for permanent access")
+            
+        except Exception as e:
+            self.print_warning(f"Could not add Homebrew to shell profile: {e}")
+            print(f"📋 Manually add this line to your ~/.zshrc or ~/.bash_profile:")
+            print(f"   export PATH=\"{brew_dir}:$PATH\"")
 
     def install_ollama_local(self):
         """Install Ollama locally in project directory as fallback."""
