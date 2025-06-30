@@ -19,9 +19,66 @@ from pathlib import Path
 # ==========================================
 # PATH CONFIGURATION FOR NCBI E-UTILITIES
 # ==========================================
+def cleanup_broken_symlinks():
+    """Remove broken NCBI tool symlinks that interfere with working installation."""
+    script_dir = Path(__file__).parent.absolute()
+    bin_dir = script_dir / "bin"
+    
+    if bin_dir.exists():
+        print("INFO: Found local bin directory with potential broken symlinks", file=sys.stderr)
+        
+        # Check if symlinks are broken by testing multiple methods
+        should_remove = False
+        
+        # Method 1: Check if esearch symlink exists (as symlink, not target)
+        esearch_symlink = bin_dir / "esearch"
+        if esearch_symlink.is_symlink():
+            target = esearch_symlink.resolve()
+            if not target.exists():
+                print("INFO: Detected broken symlink (target does not exist)", file=sys.stderr)
+                should_remove = True
+            else:
+                # Method 2: Test if the symlink actually works
+                try:
+                    result = subprocess.run([str(esearch_symlink), "-help"], 
+                                          capture_output=True, text=True, timeout=5)
+                    if result.returncode != 0:
+                        print("INFO: Detected broken symlinks (execution failed)", file=sys.stderr)
+                        should_remove = True
+                    else:
+                        print("INFO: Symlinks appear to be working, keeping them", file=sys.stderr)
+                except Exception as e:
+                    print(f"INFO: Error testing symlinks ({e}), assuming broken", file=sys.stderr)
+                    should_remove = True
+        elif esearch_symlink.exists():
+            # It's a regular file, test if it works
+            try:
+                result = subprocess.run([str(esearch_symlink), "-help"], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode != 0:
+                    print("INFO: Detected non-working NCBI tools in bin directory", file=sys.stderr)
+                    should_remove = True
+                else:
+                    print("INFO: NCBI tools in bin directory appear to be working", file=sys.stderr)
+            except Exception as e:
+                print(f"INFO: Error testing NCBI tools in bin directory ({e}), assuming broken", file=sys.stderr)
+                should_remove = True
+        
+        # Remove the bin directory if symlinks are broken
+        if should_remove:
+            import shutil
+            try:
+                shutil.rmtree(bin_dir)
+                print("✅ Removed broken symlinks directory", file=sys.stderr)
+            except Exception as remove_error:
+                print(f"WARNING: Could not remove bin directory: {remove_error}", file=sys.stderr)
+
 def configure_ncbi_tools_path():
     """Configure PATH to include NCBI E-utilities installation locations."""
     print("INFO: Configuring PATH for NCBI E-utilities...", file=sys.stderr)
+    
+    # First, clean up any broken symlinks
+    cleanup_broken_symlinks()
     
     # Get current script directory
     script_dir = Path(__file__).parent.absolute()
@@ -36,21 +93,34 @@ def configure_ncbi_tools_path():
         # Note: Removed local symlinks as they're unreliable due to dependency issues
     ]
     
-    # Get current PATH
+    # Get current PATH and clean it up
     current_path = os.environ.get("PATH", "")
     path_parts = current_path.split(os.pathsep) if current_path else []
     
+    # Remove problematic paths (broken symlinks in project bin directory)
+    problematic_paths = [
+        str(script_dir / "bin"),  # Remove broken symlinks directory
+    ]
+    
+    # Clean up PATH by removing problematic paths and duplicates
+    cleaned_path_parts = []
+    for path in path_parts:
+        # Skip problematic paths and duplicates
+        if path not in problematic_paths and path not in cleaned_path_parts:
+            cleaned_path_parts.append(path)
+    
     # Add NCBI paths to the beginning (highest priority)
     for ncbi_path in reversed(ncbi_paths):  # Reverse to maintain priority order
-        if ncbi_path not in path_parts:
-            path_parts.insert(0, ncbi_path)
+        if ncbi_path not in cleaned_path_parts:
+            cleaned_path_parts.insert(0, ncbi_path)
     
     # Update PATH environment variable
-    new_path = os.pathsep.join(path_parts)
+    new_path = os.pathsep.join(cleaned_path_parts)
     os.environ["PATH"] = new_path
     
     print(f"INFO: Updated PATH with NCBI tool locations", file=sys.stderr)
     print(f"INFO: Priority paths: {ncbi_paths}", file=sys.stderr)
+    print(f"INFO: Removed problematic paths: {problematic_paths}", file=sys.stderr)
     
     # Verify NCBI tools availability
     return verify_ncbi_tools()
@@ -128,12 +198,23 @@ def print_ncbi_diagnostic_info():
         else:
             print(f"❌ {description}: {location} (not found)", file=sys.stderr)
     
+    # Check for broken symlinks in project bin directory
+    broken_symlinks_detected = False
+    bin_dir = script_dir / "bin"
+    if bin_dir.exists():
+        broken_symlinks_detected = True
+    
     print("\n🔧 TROUBLESHOOTING STEPS:", file=sys.stderr)
-    print("1. Re-run the installer: python3 install_sra_analyzer.py", file=sys.stderr)
-    print("2. Or manually install NCBI E-utilities:", file=sys.stderr)
+    if broken_symlinks_detected:
+        print("1. **IMMEDIATE FIX** - Remove broken symlinks:", file=sys.stderr)
+        print(f"   rm -rf {bin_dir}", file=sys.stderr)
+        print("   (This removes the directory with broken symlinks that interfere with working tools)", file=sys.stderr)
+        print("", file=sys.stderr)
+    print("2. Re-run the installer: python3 install_sra_analyzer.py", file=sys.stderr)
+    print("3. Or manually install NCBI E-utilities:", file=sys.stderr)
     print('   sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"', file=sys.stderr)
-    print("3. Restart your terminal after installation", file=sys.stderr)
-    print("4. Check that $HOME/edirect is in your PATH", file=sys.stderr)
+    print("4. Restart your terminal after installation", file=sys.stderr)
+    print("5. Check that $HOME/edirect is in your PATH", file=sys.stderr)
     print("="*60 + "\n", file=sys.stderr)
 
 # Configure NCBI tools PATH at script startup
