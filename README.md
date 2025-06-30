@@ -22,6 +22,15 @@ SRA-LLM is like having an AI research assistant that can:
 ### Option 1: One-Click Installation (Recommended)
 
 **For macOS:**
+
+⚠️ **Important: macOS Security Settings**
+macOS may block the installation scripts due to privacy/security settings. If you see "cannot be opened because it is from an unidentified developer":
+
+1. **Right-click** `install_mac.command` → **"Open"** → **"Open"** (bypass security)
+2. Or go to **System Preferences** → **Security & Privacy** → **"Allow Anyway"**
+3. Or use Terminal: `chmod +x install_mac.command && ./install_mac.command`
+
+**Installation Steps:**
 1. Download the project files
 2. Double-click `install_mac.command` (sets up everything)
 3. Double-click `run_mac.command` (starts web interface)
