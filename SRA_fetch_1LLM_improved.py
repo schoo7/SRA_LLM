@@ -29,11 +29,11 @@ def configure_ncbi_tools_path():
     
     # Priority order for NCBI tools locations
     ncbi_paths = [
+        str(home_dir / "edirect"),                  # Official installation (highest priority)
         "/usr/local/bin",                           # Homebrew Intel
         "/opt/homebrew/bin",                        # Homebrew Apple Silicon  
-        str(home_dir / "edirect"),                  # Official installation
-        str(script_dir / "bin"),                    # Local symlinks
         str(script_dir / "ncbi_tools" / "edirect"), # Local installation fallback
+        # Note: Removed local symlinks as they're unreliable due to dependency issues
     ]
     
     # Get current PATH
@@ -107,11 +107,11 @@ def print_ncbi_diagnostic_info():
     home_dir = Path.home()
     
     locations_to_check = [
+        (str(home_dir / "edirect"), "Official installation"),
         ("/usr/local/bin", "Homebrew Intel"),
         ("/opt/homebrew/bin", "Homebrew Apple Silicon"),
-        (str(home_dir / "edirect"), "Official installation"),
-        (str(script_dir / "bin"), "Local symlinks"),
         (str(script_dir / "ncbi_tools" / "edirect"), "Local installation"),
+        # Note: Removed local symlinks as they're unreliable due to dependency issues
     ]
     
     for location, description in locations_to_check:
