@@ -241,55 +241,154 @@ def signal_handler(signum, frame):
     sys.exit(0)
 
 def cleanup_ollama_processes():
-    """Clean up any orphaned Ollama model processes started BY THIS SCRIPT."""
-    print("🧹 Starting targeted cleanup of script-spawned Ollama processes...", file=sys.stderr)
+    """Clean up any orphaned Ollama model processes and SRA script processes."""
+    print("🧹 Starting comprehensive cleanup...", file=sys.stderr)
     
-    global _ollama_processes
-    
-    if not _ollama_processes:
-        print("INFO: No Ollama processes were started by this script. Skipping cleanup.", file=sys.stderr)
-        return
-
-    print(f"INFO: Terminating {len(_ollama_processes)} tracked Ollama process(es): {_ollama_processes}", file=sys.stderr)
-    
-    for pid in _ollama_processes:
-        pid = str(pid).strip()
-        if not pid:
-            continue
-        try:
-            # First, check if the process still exists
-            check_result = subprocess.run(['ps', '-p', pid], capture_output=True, text=True)
-            if check_result.returncode != 0:
-                print(f"INFO: Process {pid} no longer exists. Skipping.", file=sys.stderr)
-                continue
-
-            print(f"INFO: Terminating Ollama process {pid}...", file=sys.stderr)
-            # Use SIGTERM for a graceful shutdown
-            subprocess.run(['kill', '-TERM', pid], timeout=5)
-            time.sleep(2)  # Give it a moment to shut down
-
-            # Check if it's still running, and force kill if necessary
-            check_result = subprocess.run(['ps', '-p', pid], capture_output=True, text=True)
-            if check_result.returncode == 0:
-                print(f"INFO: Process {pid} still running. Force killing...", file=sys.stderr)
-                subprocess.run(['kill', '-KILL', pid], timeout=5)
-                
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-            print(f"WARNING: Could not terminate process {pid}. It might already be gone. Error: {e}", file=sys.stderr)
-        except Exception as e:
-            print(f"WARNING: An unexpected error occurred while cleaning up process {pid}: {e}", file=sys.stderr)
-
-    print("✅ Targeted cleanup completed!", file=sys.stderr)
-    
-    # Optional: Verify that the main Ollama service is still running
     try:
-        status_result = subprocess.run(['pgrep', '-f', 'ollama serve'], capture_output=True, text=True)
-        if status_result.returncode == 0:
-            print("✅ Verified: Main Ollama service is still running.", file=sys.stderr)
+        # Method 1: Clean up qwen3 model processes
+        print("INFO: Searching for qwen3 model processes...", file=sys.stderr)
+        result = subprocess.run(['pgrep', '-f', 'ollama runner.*qwen3'], 
+                              capture_output=True, text=True)
+        if result.returncode == 0:
+            pids = result.stdout.strip().split('\n')
+            print(f"INFO: Found Ollama qwen3 processes: {pids}", file=sys.stderr)
+            for pid in pids:
+                if pid.strip():
+                    try:
+                        print(f"INFO: Terminating Ollama process {pid}...", file=sys.stderr)
+                        subprocess.run(['kill', '-TERM', pid], timeout=5)
+                        time.sleep(2)
+                        # Check if still running, force kill
+                        check_result = subprocess.run(['ps', '-p', pid], 
+                                                    capture_output=True, text=True)
+                        if check_result.returncode == 0:
+                            print(f"INFO: Force killing Ollama process {pid}...", file=sys.stderr)
+                            subprocess.run(['kill', '-KILL', pid], timeout=5)
+                    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                        pass  # Process already gone or can't be killed
         else:
-            print("❌ WARNING: Main Ollama service appears to be stopped.", file=sys.stderr)
+            print("INFO: No qwen3 model processes found.", file=sys.stderr)
+        
+        # Method 2: Clean up other SRA script processes (but not current process)
+        current_pid = os.getpid()
+        print("INFO: Searching for other SRA script processes...", file=sys.stderr)
+        sra_result = subprocess.run(['pgrep', '-f', 'SRA_fetch_1LLM_improved.py'], 
+                                  capture_output=True, text=True)
+        if sra_result.returncode == 0:
+            sra_pids = sra_result.stdout.strip().split('\n')
+            for pid in sra_pids:
+                if pid.strip() and int(pid) != current_pid:
+                    try:
+                        print(f"INFO: Terminating other SRA script process {pid}...", file=sys.stderr)
+                        subprocess.run(['kill', '-TERM', pid], timeout=5)
+                        time.sleep(2)
+                        # Force kill if still running
+                        check_result = subprocess.run(['ps', '-p', pid], 
+                                                    capture_output=True, text=True)
+                        if check_result.returncode == 0:
+                            print(f"INFO: Force killing SRA script process {pid}...", file=sys.stderr)
+                            subprocess.run(['kill', '-KILL', pid], timeout=5)
+                    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError):
+                        pass  # Process already gone or can't be killed
+        else:
+            print("INFO: No other SRA script processes found.", file=sys.stderr)
+        
+        # Method 3: Kill by port if port-based cleanup is needed
+        try:
+            # Find processes using typical Ollama ports
+            port_result = subprocess.run(['lsof', '-ti', ':11434'], 
+                                       capture_output=True, text=True)
+            if port_result.returncode == 0:
+                pids = port_result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        try:
+                            print(f"INFO: Terminating Ollama on port 11434: {pid}", file=sys.stderr)
+                            subprocess.run(['kill', '-TERM', pid], timeout=5)
+                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                            pass
+        except FileNotFoundError:
+            pass  # lsof not available
+        
+        print("✅ Comprehensive cleanup completed!", file=sys.stderr)
+        
+        # Show final status
+        print("INFO: Final process status:", file=sys.stderr)
+        status_result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+        if status_result.returncode == 0:
+            ollama_processes = []
+            for line in status_result.stdout.split('\n'):
+                if 'ollama' in line and 'grep' not in line:
+                    ollama_processes.append(line.strip())
+            
+            if ollama_processes:
+                print("INFO: Remaining Ollama processes:", file=sys.stderr)
+                for proc in ollama_processes:
+                    print(f"  {proc}", file=sys.stderr)
+            else:
+                print("INFO: No Ollama processes running.", file=sys.stderr)
+        
     except Exception as e:
-        print(f"INFO: Could not check main Ollama service status: {e}", file=sys.stderr)
+        print(f"WARNING: Error during comprehensive cleanup: {e}", file=sys.stderr)
+
+def restart_ollama_service():
+    """Restart Ollama service after cleanup to ensure it's available for future runs."""
+    print("🔄 Restarting Ollama service...", file=sys.stderr)
+    
+    try:
+        # Check if Ollama is already running
+        check_result = subprocess.run(['pgrep', 'ollama'], capture_output=True, text=True)
+        if check_result.returncode == 0:
+            print("INFO: Ollama service is already running", file=sys.stderr)
+            return True
+        
+        # Try to start Ollama service
+        print("INFO: Starting Ollama service...", file=sys.stderr)
+        
+        # Method 1: Try to start Ollama directly
+        try:
+            start_result = subprocess.run(['ollama', 'serve'], 
+                                        capture_output=True, text=True, timeout=10)
+            if start_result.returncode == 0:
+                print("✅ Ollama service started successfully", file=sys.stderr)
+                return True
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        # Method 2: Try to start with background process
+        try:
+            # Start Ollama in background
+            subprocess.Popen(['ollama', 'serve'], 
+                           stdout=subprocess.DEVNULL, 
+                           stderr=subprocess.DEVNULL)
+            time.sleep(3)  # Give it time to start
+            
+            # Check if it's running
+            check_result = subprocess.run(['pgrep', 'ollama'], capture_output=True, text=True)
+            if check_result.returncode == 0:
+                print("✅ Ollama service started in background", file=sys.stderr)
+                return True
+        except Exception as e:
+            print(f"WARNING: Failed to start Ollama in background: {e}", file=sys.stderr)
+        
+        # Method 3: Check if Ollama is available via system service
+        try:
+            # Try to list models to see if service is available
+            list_result = subprocess.run(['ollama', 'list'], 
+                                       capture_output=True, text=True, timeout=10)
+            if list_result.returncode == 0:
+                print("✅ Ollama service is available", file=sys.stderr)
+                return True
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        print("⚠️ Could not restart Ollama service automatically", file=sys.stderr)
+        print("INFO: Ollama will be started automatically on next script run", file=sys.stderr)
+        return False
+        
+    except Exception as e:
+        print(f"WARNING: Error restarting Ollama service: {e}", file=sys.stderr)
+        return False
 
 def create_pid_file():
     """Create a PID file for this script to help with cleanup."""
@@ -366,45 +465,30 @@ OUTPUT_COLUMNS = [
 ]
 
 class SimpleLLMProcessor:
-    """Manages LLM instances and interactions for SRA data processing."""
+    """Simplified LLM processor optimized for qwen3:8b model."""
     
     def __init__(self, model_name: str = "qwen3:8b", fresh_instance_per_sample: bool = True):
         self.model_name = model_name
-        self.fresh_instance_per_sample = fresh_instance_per_sample
-        self._study_contexts = {}  # Store context per study
-        self._llm_instances = {}   # Cache LLM instances
-        self._main_llm = None
+        self.fresh_instance_per_study = fresh_instance_per_sample  # Rename for clarity
+        self.llm = None
+        self._current_study_id = None
+        self._current_study_llm = None
+        self._study_sample_count = 0
+        self._study_context = {}  # Store study-level context for LLM guidance
+        self._study_summary = None  # Store study-level summary to reuse
         
-        # Track Ollama processes started by this script
-        global _ollama_processes
-        self._process_pids = _ollama_processes
-
+        if not self.fresh_instance_per_study:
+            self._initialize_llm()
+    
     def _initialize_llm(self):
-        """Initializes a new LLM instance and stores its PID."""
+        """Initialize the LLM connection once."""
         try:
-            print(f"INFO: Initializing new LLM instance for model: {self.model_name}", file=sys.stderr)
-            # This simulates starting a process and getting a PID
-            # In a real scenario, you would use subprocess.Popen and get process.pid
-            llm = Ollama(model=self.model_name)
-            
-            # Simulate finding the PID of the new runner process
-            # This is a placeholder for a more robust method
-            time.sleep(2) # Give time for the process to start
-            result = subprocess.run(['pgrep', '-f', f'ollama runner.*{self.model_name}'], 
-                                  capture_output=True, text=True)
-            if result.returncode == 0:
-                pids = result.stdout.strip().split('\n')
-                # Find the newest PID, assuming it's the one we just started
-                newest_pid = max(pids, key=int)
-                if newest_pid not in self._process_pids:
-                    self._process_pids.append(newest_pid)
-                    print(f"INFO: Started and tracking new Ollama runner process with PID: {newest_pid}", file=sys.stderr)
-            
-            return llm
+            from langchain_ollama import OllamaLLM
+            self.llm = OllamaLLM(model=self.model_name)
+            print(f"🤖 Initialized {self.model_name} model", file=sys.stderr)
         except Exception as e:
-            print(f"ERROR: Failed to initialize LLM: {e}", file=sys.stderr)
-            print("ERROR: Please ensure Ollama is installed and the model is available.", file=sys.stderr)
-            return None
+            print(f"Error initializing LLM: {e}", file=sys.stderr)
+            self.llm = None
     
     def _get_fresh_llm_instance(self):
         """Create a fresh LLM instance."""
@@ -432,7 +516,7 @@ class SimpleLLMProcessor:
         """Get LLM instance for a study with refresh logic and context sharing."""
         study_id = self._extract_study_id(srx_id, gse_id)
         
-        if not self.fresh_instance_per_sample:
+        if not self.fresh_instance_per_study:
             return self.llm, {}
         
         # Check if we need a fresh instance
@@ -1683,48 +1767,15 @@ def stream_process_keyword(keyword: str, output_csv: str, llm_proc: SimpleLLMPro
     print(f"  - Total eligible samples encountered: {total_eligible_encountered}", file=sys.stderr)
     print(f"  - Samples filtered by library strategy: (handled in download phase)", file=sys.stderr)
 
-def is_ollama_running():
-    """Check if the main Ollama service is running."""
-    try:
-        # Check for a process listening on the default Ollama port
-        result_lsof = subprocess.run(['lsof', '-i', ':11434'], capture_output=True, text=True)
-        if result_lsof.returncode == 0 and 'LISTEN' in result_lsof.stdout:
-            return True
-            
-        # Fallback for systems without lsof or if port is different
-        result_pgrep = subprocess.run(['pgrep', '-f', 'ollama serve'], capture_output=True, text=True)
-        if result_pgrep.returncode == 0:
-            return True
-            
-    except FileNotFoundError:
-        # If lsof or pgrep are not found, we can't be sure.
-        # We can assume it's running and let it fail later if not.
-        print("WARNING: Could not find tools to check Ollama status. Assuming it is running.", file=sys.stderr)
-        return True
-    except Exception as e:
-        print(f"WARNING: Error checking Ollama status: {e}", file=sys.stderr)
-        return True # Assume running to avoid blocking execution
-        
-    return False
-
 def main():
-    """Main function to run the SRA data processing pipeline."""
-    
-    # Register cleanup handlers at the very beginning
+    """Main function."""
+    # Register cleanup handlers first
     register_cleanup()
-
-    # Check if Ollama is running before starting
-    print("INFO: Checking if Ollama service is running...", file=sys.stderr)
-    if not is_ollama_running():
-        print("❌ FATAL: Ollama service is not running.", file=sys.stderr)
-        print("Please start the Ollama application and try again.", file=sys.stderr)
-        sys.exit(1)
-    print("✅ Ollama service is running.", file=sys.stderr)
-
-    parser = argparse.ArgumentParser(
-        description="Fetch and process SRA data using an LLM.",
-        formatter_class=argparse.RawTextHelpFormatter
-    )
+    
+    # Create PID file for tracking
+    pid_file = create_pid_file()
+    
+    parser = argparse.ArgumentParser(description="SRA/GEO Metadata Extraction with LLM (1b optimized)")
     parser.add_argument("--keywords", required=True, help="CSV file with keywords")
     parser.add_argument("--output", required=True, help="Output CSV file")
     parser.add_argument("--model", default="qwen3:8b", help="LLM model name")
@@ -1795,8 +1846,9 @@ def main():
         print(f"ERROR: Unexpected error in main: {e}", file=sys.stderr)
     finally:
         cleanup_ollama_processes()
+        restart_ollama_service()
         remove_pid_file(pid_file)
-        print("🎯 Script execution finished with cleanup completed.", file=sys.stderr)
+        print("🎯 Script execution finished with cleanup and restart completed.", file=sys.stderr)
 
 # -------------------------
 # Helper utility functions
