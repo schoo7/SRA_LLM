@@ -14,6 +14,130 @@ from tqdm import tqdm
 import signal
 import tempfile
 import atexit
+from pathlib import Path
+
+# ==========================================
+# PATH CONFIGURATION FOR NCBI E-UTILITIES
+# ==========================================
+def configure_ncbi_tools_path():
+    """Configure PATH to include NCBI E-utilities installation locations."""
+    print("INFO: Configuring PATH for NCBI E-utilities...", file=sys.stderr)
+    
+    # Get current script directory
+    script_dir = Path(__file__).parent.absolute()
+    home_dir = Path.home()
+    
+    # Priority order for NCBI tools locations
+    ncbi_paths = [
+        "/usr/local/bin",                           # Homebrew Intel
+        "/opt/homebrew/bin",                        # Homebrew Apple Silicon  
+        str(home_dir / "edirect"),                  # Official installation
+        str(script_dir / "bin"),                    # Local symlinks
+        str(script_dir / "ncbi_tools" / "edirect"), # Local installation fallback
+    ]
+    
+    # Get current PATH
+    current_path = os.environ.get("PATH", "")
+    path_parts = current_path.split(os.pathsep) if current_path else []
+    
+    # Add NCBI paths to the beginning (highest priority)
+    for ncbi_path in reversed(ncbi_paths):  # Reverse to maintain priority order
+        if ncbi_path not in path_parts:
+            path_parts.insert(0, ncbi_path)
+    
+    # Update PATH environment variable
+    new_path = os.pathsep.join(path_parts)
+    os.environ["PATH"] = new_path
+    
+    print(f"INFO: Updated PATH with NCBI tool locations", file=sys.stderr)
+    print(f"INFO: Priority paths: {ncbi_paths}", file=sys.stderr)
+    
+    # Verify NCBI tools availability
+    return verify_ncbi_tools()
+
+def verify_ncbi_tools():
+    """Verify that NCBI tools are available and working."""
+    print("INFO: Verifying NCBI E-utilities availability...", file=sys.stderr)
+    
+    required_tools = ["esearch", "efetch"]
+    available_tools = []
+    
+    for tool in required_tools:
+        try:
+            # Try to find the tool
+            result = subprocess.run(["which", tool], capture_output=True, text=True)
+            if result.returncode == 0:
+                tool_path = result.stdout.strip()
+                print(f"INFO: Found {tool} at: {tool_path}", file=sys.stderr)
+                
+                # Test if the tool actually works
+                test_result = subprocess.run([tool, "-help"], capture_output=True, text=True, timeout=10)
+                if test_result.returncode == 0:
+                    available_tools.append(tool)
+                    print(f"INFO: {tool} is working correctly", file=sys.stderr)
+                else:
+                    print(f"WARNING: {tool} found but not working properly", file=sys.stderr)
+            else:
+                print(f"WARNING: {tool} not found in PATH", file=sys.stderr)
+                
+        except Exception as e:
+            print(f"WARNING: Error checking {tool}: {e}", file=sys.stderr)
+    
+    if len(available_tools) == len(required_tools):
+        print("✅ All NCBI E-utilities are available and working!", file=sys.stderr)
+        return True
+    else:
+        print("❌ Some NCBI E-utilities are missing or not working", file=sys.stderr)
+        print_ncbi_diagnostic_info()
+        return False
+
+def print_ncbi_diagnostic_info():
+    """Print diagnostic information for troubleshooting NCBI tools."""
+    print("\n" + "="*60, file=sys.stderr)
+    print("🔧 NCBI E-UTILITIES DIAGNOSTIC INFORMATION", file=sys.stderr)
+    print("="*60, file=sys.stderr)
+    
+    # Show current PATH
+    current_path = os.environ.get("PATH", "")
+    print(f"Current PATH: {current_path}", file=sys.stderr)
+    
+    # Check installation locations
+    print("\nChecking installation locations:", file=sys.stderr)
+    script_dir = Path(__file__).parent.absolute()
+    home_dir = Path.home()
+    
+    locations_to_check = [
+        ("/usr/local/bin", "Homebrew Intel"),
+        ("/opt/homebrew/bin", "Homebrew Apple Silicon"),
+        (str(home_dir / "edirect"), "Official installation"),
+        (str(script_dir / "bin"), "Local symlinks"),
+        (str(script_dir / "ncbi_tools" / "edirect"), "Local installation"),
+    ]
+    
+    for location, description in locations_to_check:
+        location_path = Path(location)
+        if location_path.exists():
+            print(f"✅ {description}: {location} (exists)", file=sys.stderr)
+            # Check for specific tools
+            for tool in ["esearch", "efetch"]:
+                tool_path = location_path / tool
+                if tool_path.exists():
+                    print(f"   - {tool}: found", file=sys.stderr)
+                else:
+                    print(f"   - {tool}: missing", file=sys.stderr)
+        else:
+            print(f"❌ {description}: {location} (not found)", file=sys.stderr)
+    
+    print("\n🔧 TROUBLESHOOTING STEPS:", file=sys.stderr)
+    print("1. Re-run the installer: python3 install_sra_analyzer.py", file=sys.stderr)
+    print("2. Or manually install NCBI E-utilities:", file=sys.stderr)
+    print('   sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"', file=sys.stderr)
+    print("3. Restart your terminal after installation", file=sys.stderr)
+    print("4. Check that $HOME/edirect is in your PATH", file=sys.stderr)
+    print("="*60 + "\n", file=sys.stderr)
+
+# Configure NCBI tools PATH at script startup
+NCBI_TOOLS_AVAILABLE = configure_ncbi_tools_path()
 
 # Global variables for cleanup
 _ollama_processes = []
@@ -1018,12 +1142,28 @@ def start_streaming_download(keyword: str, file_path: str) -> threading.Thread:
             print(f"ERROR: Failed to create initial file {file_path}: {e}", file=sys.stderr)
             return
         
-        # Check if NCBI tools are available
+        # Check if NCBI tools are available (using global verification)
+        if not NCBI_TOOLS_AVAILABLE:
+            print(f"ERROR: NCBI E-utilities are not available or not working properly", file=sys.stderr)
+            print(f"ERROR: Data download cannot proceed without NCBI tools", file=sys.stderr)
+            print(f"INFO: Please check the diagnostic information shown at startup", file=sys.stderr)
+            
+            # Create minimal CSV header so processing can continue
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write("Run,ReleaseDate,LoadDate,spots,bases,spots_with_mates,avgLength,size_MB,AssemblyName,download_path,Experiment,LibraryName,LibraryStrategy,LibrarySelection,LibrarySource,LibraryLayout,InsertSize,InsertDev,Platform,Model,SRAStudy,BioProject,Study_Pubmed_id,ProjectID,Sample,BioSample,SampleType,TaxID,ScientificName,SampleName,g1k_pop_code,source,g1k_analysis_group,Subject_ID,Sex,Disease,Tumor,Affection_Status,Analyte_Type,Histological_Type,Body_Site,CenterName,Submission,dbgap_study_accession,Consent,RunHash,ReadHash\n")
+                print(f"INFO: Created minimal CSV header for offline processing", file=sys.stderr)
+            except Exception as e2:
+                print(f"ERROR: Failed to create CSV header: {e2}", file=sys.stderr)
+            return
+        
+        # Double-check tools are still working (they might have been available at startup but failed later)
         try:
             subprocess.run(["esearch", "-help"], capture_output=True, check=True, text=True, timeout=10)
         except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-            print(f"ERROR: NCBI esearch tool not found or not working: {e}", file=sys.stderr)
-            print(f"ERROR: Please ensure NCBI E-utilities are installed and in PATH", file=sys.stderr)
+            print(f"ERROR: NCBI esearch tool not working: {e}", file=sys.stderr)
+            print(f"ERROR: Tools were available at startup but failed during execution", file=sys.stderr)
+            print_ncbi_diagnostic_info()
             # Create minimal CSV header so processing can continue
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
