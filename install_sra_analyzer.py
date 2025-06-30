@@ -510,7 +510,7 @@ class SRAAnalyzerInstaller:
             return False
 
     def install_ncbi_tools_windows(self):
-        """Install NCBI E-utilities on Windows using system-wide methods."""
+        """Install NCBI E-utilities on Windows using official NCBI method."""
         try:
             # Check if already installed system-wide
             result = subprocess.run(["where", "esearch"], capture_output=True, text=True)
@@ -520,43 +520,76 @@ class SRAAnalyzerInstaller:
         except Exception:
             pass
         
-        print("Installing NCBI E-utilities system-wide for Windows...")
+        print("Installing NCBI E-utilities for Windows...")
         
-        # Try official system installation to user directory
+        # Check if we're in a Unix-like environment (Cygwin, WSL, Git Bash)
+        unix_like = False
         try:
-            print("Installing NCBI E-utilities using official installer...")
-            
-            # Create a temporary directory for installation
-            temp_dir = self.install_dir / "temp_install"
-            temp_dir.mkdir(exist_ok=True)
-            
-            # Download and run the official installer
-            eutils_url = "https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/versions/current/edirect_pc.exe"
-            installer_path = temp_dir / "edirect_pc.exe"
-            
-            print(f"Downloading installer from {eutils_url}...")
-            urllib.request.urlretrieve(eutils_url, installer_path)
+            # Check if we have bash and curl/wget available
+            subprocess.run(["bash", "--version"], capture_output=True, text=True, check=True)
+            unix_like = True
+        except:
+            pass
+        
+        if unix_like:
+            # Use the official installation script (works in Cygwin, WSL, Git Bash)
+            try:
+                print("Installing NCBI E-utilities using official installer (Unix-like environment)...")
+                
+                # Try curl first, then wget
+                install_cmd = None
+                if shutil.which("curl"):
+                    install_cmd = 'sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"'
+                elif shutil.which("wget"):
+                    install_cmd = 'sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"'
+                
+                if install_cmd:
+                    subprocess.run(["bash", "-c", install_cmd], check=True)
+                    
+                    # Check if installation worked
+                    edirect_path = Path.home() / "edirect"
+                    if edirect_path.exists():
+                        self.print_success("NCBI E-utilities installed to $HOME/edirect!")
+                        print("✓ Please restart your terminal or run the launcher scripts")
+                        return True
+                    else:
+                        raise Exception("Installation completed but edirect directory not found")
+                else:
+                    raise Exception("Neither curl nor wget available")
+                    
+            except Exception as e:
+                print(f"Unix-like installation failed: {e}")
+                print("Trying Windows-specific installation...")
+        
+        # Windows-specific installation (PowerShell or manual)
+        try:
+            print("Installing NCBI E-utilities using Windows method...")
             
             # Create the installation directory in user's home
             home_edirect = Path.home() / "edirect"
             home_edirect.mkdir(exist_ok=True)
             
+            # Download and run the official installer
+            eutils_url = "https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/versions/current/edirect_pc.exe"
+            installer_path = home_edirect / "edirect_pc.exe"
+            
+            print(f"Downloading installer from {eutils_url}...")
+            urllib.request.urlretrieve(eutils_url, installer_path)
+            
             # Extract to home directory
             os.chdir(home_edirect)
             subprocess.run([str(installer_path)], check=True)
             
-            # Clean up
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            
             self.print_success("NCBI E-utilities installed to user directory!")
             print(f"✓ Installed to: {home_edirect}")
-            print("Please add the following to your PATH:")
+            print("⚠️ IMPORTANT: Please add the following to your PATH:")
             print(f"   {home_edirect}")
-            print("This can be done through System Properties > Environment Variables")
+            print("   This can be done through System Properties > Environment Variables")
+            print("   Or the launcher scripts will try to find the tools automatically")
             return True
             
         except Exception as e:
-            self.print_error(f"System installation failed: {e}")
+            self.print_error(f"Windows installation failed: {e}")
             print("Falling back to local installation...")
             return self.install_ncbi_tools_local_windows()
     
@@ -588,7 +621,7 @@ class SRAAnalyzerInstaller:
             return False
 
     def install_ncbi_tools_mac(self):
-        """Install NCBI E-utilities on macOS using system-wide methods."""
+        """Install NCBI E-utilities on macOS using official NCBI method."""
         try:
             # Check if already installed system-wide
             result = subprocess.run(["which", "esearch"], capture_output=True, text=True)
@@ -600,33 +633,13 @@ class SRAAnalyzerInstaller:
         
         print("Installing NCBI E-utilities system-wide for macOS...")
         
-        # First try Homebrew installation (preferred)
-        if self.check_homebrew_availability():
-            try:
-                print("Installing NCBI E-utilities via Homebrew...")
-                subprocess.run(["brew", "install", "edirect"], check=True)
-                
-                # Verify installation
-                result = subprocess.run(["which", "esearch"], capture_output=True, text=True)
-                if result.returncode == 0:
-                    self.print_success("NCBI E-utilities installed via Homebrew!")
-                    return True
-                    
-            except subprocess.CalledProcessError as e:
-                print(f"Homebrew installation failed: {e}")
-                print("Trying official installation method...")
-        
-        # If Homebrew fails, try official system installation
+        # Primary method: Official NCBI installation (recommended)
         try:
-            print("Installing NCBI E-utilities using official installer to $HOME/edirect...")
+            print("Installing NCBI E-utilities using official NCBI installer...")
+            print("This will install to $HOME/edirect and update your shell profile")
             
-            # Download and run official installer
-            install_cmd = """
-            cd $HOME
-            curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh | bash
-            echo 'export PATH=$HOME/edirect:$PATH' >> $HOME/.bash_profile
-            echo 'export PATH=$HOME/edirect:$PATH' >> $HOME/.zshrc
-            """
+            # Use the official installation command as provided by the user
+            install_cmd = 'sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"'
             
             subprocess.run(["bash", "-c", install_cmd], check=True)
             
@@ -634,17 +647,107 @@ class SRAAnalyzerInstaller:
             edirect_path = Path.home() / "edirect"
             if edirect_path.exists():
                 self.print_success("NCBI E-utilities installed to $HOME/edirect!")
-                print("✓ Added to .bash_profile and .zshrc")
-                print("Please run 'source ~/.bash_profile' or 'source ~/.zshrc' to update PATH")
-                print("Or restart your terminal")
-                return True
+                
+                # Ensure PATH is added to shell profiles (the installer should do this, but let's be sure)
+                self.add_edirect_to_shell_profiles()
+                
+                # Verify tools are available
+                if self.verify_ncbi_tools_installation():
+                    self.print_success("NCBI E-utilities installation verified!")
+                    return True
+                else:
+                    print("⚠️ Installation completed but tools need PATH update")
+                    print("Please restart your terminal or run: source ~/.zshrc")
+                    return True
             else:
                 raise Exception("Installation completed but edirect directory not found")
                 
         except Exception as e:
-            self.print_error(f"System installation failed: {e}")
-            print("Falling back to local installation...")
-            return self.install_ncbi_tools_local()
+            self.print_error(f"Official installation failed: {e}")
+            print("Trying Homebrew fallback...")
+        
+        # Fallback: Try Homebrew installation
+        if self.check_homebrew_availability():
+            try:
+                print("Installing NCBI E-utilities via Homebrew (fallback)...")
+                # Try different possible package names
+                for package_name in ["ncbi-edirect", "edirect"]:
+                    try:
+                        subprocess.run(["brew", "install", package_name], check=True)
+                        break
+                    except subprocess.CalledProcessError:
+                        continue
+                else:
+                    raise Exception("No Homebrew package found for NCBI EDirect")
+                
+                # Verify installation
+                if self.verify_ncbi_tools_installation():
+                    self.print_success("NCBI E-utilities installed via Homebrew!")
+                    return True
+                    
+            except Exception as e:
+                print(f"Homebrew installation failed: {e}")
+                print("Trying local installation...")
+        
+        # Final fallback: Local installation
+        print("Falling back to local installation...")
+        return self.install_ncbi_tools_local()
+
+    def add_edirect_to_shell_profiles(self):
+        """Add $HOME/edirect to PATH in shell profiles."""
+        try:
+            edirect_path = str(Path.home() / "edirect")
+            path_export = f'export PATH="{edirect_path}:$PATH"'
+            
+            # Add to common shell profiles
+            shell_profiles = [
+                Path.home() / ".bashrc",
+                Path.home() / ".bash_profile", 
+                Path.home() / ".zshrc",
+                Path.home() / ".profile"
+            ]
+            
+            for profile in shell_profiles:
+                try:
+                    # Check if PATH export already exists
+                    if profile.exists():
+                        content = profile.read_text()
+                        if edirect_path in content:
+                            continue  # Already added
+                    
+                    # Add PATH export
+                    with open(profile, "a") as f:
+                        f.write(f"\n# Added by SRA-LLM installer for NCBI E-utilities\n")
+                        f.write(f"{path_export}\n")
+                    
+                    print(f"✓ Added PATH to {profile}")
+                    
+                except Exception as e:
+                    print(f"⚠️ Could not update {profile}: {e}")
+            
+        except Exception as e:
+            print(f"⚠️ Could not update shell profiles: {e}")
+
+    def verify_ncbi_tools_installation(self):
+        """Verify NCBI tools are properly installed and accessible."""
+        try:
+            # Test with updated PATH
+            test_env = os.environ.copy()
+            edirect_path = str(Path.home() / "edirect")
+            test_env["PATH"] = f"{edirect_path}:{test_env.get('PATH', '')}"
+            
+            # Test esearch command
+            result = subprocess.run(
+                ["esearch", "-help"], 
+                capture_output=True, 
+                text=True,
+                env=test_env,
+                timeout=10
+            )
+            return result.returncode == 0
+            
+        except Exception:
+            return False
     
     def install_ncbi_tools_local(self):
         """Fallback: Install NCBI E-utilities locally as last resort."""
